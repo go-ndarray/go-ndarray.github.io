@@ -1,0 +1,40 @@
+baseURL = 'https://go-ndarray.github.io/'
+locale  = 'en-us'
+title   = 'go-ndarray'
+# No theme — layouts live in ./layouts
+
+disableKinds = ['taxonomy', 'term', 'rss', 'sitemap']
+
+[params]
+  description = "go-ndarray is a pure-Go (CGO=0) NumPy-style n-dimensional array library for float64 — slicing/views, broadcasting, ufuncs, reductions and linear algebra, multicore + SIMD, faster than NumPy on the parallelizable core."
+  brand       = "go-ndarray"
+  github      = "go-ndarray"
+  heroAccent  = "go-ndarray"
+  heroTagline = "NumPy-style n-dimensional arrays in pure Go. float64, multicore + SIMD."
+
+  heroIntro = [
+    "<strong>go-ndarray</strong> is the <code>numpy</code> equivalent for Go: a float64 n-dimensional array with creation routines, <strong>strided views that share data</strong>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, and linear algebra (a panel-packed, cache-blocked GEMM) — all in <strong>pure Go, with cgo disabled</strong>.",
+    "Ruby has no cgo-free ndarray (<code>Numo::NArray</code> and <code>NMatrix</code> are C extensions) and <code>gonum</code>'s optimized assembly is amd64-only. go-ndarray pairs a portable scalar core with multicore fan-out and go-asmgen SIMD kernels, beating single-threaded NumPy on the parallelizable core. 100% test coverage is the bar, differentially checked against numpy 2.2."
+  ]
+
+[menu]
+  [[menu.main]]
+    identifier = "why"
+    name       = "Why"
+    url        = "#why"
+    weight     = 10
+  [[menu.main]]
+    identifier = "repos"
+    name       = "Repos"
+    url        = "#repos"
+    weight     = 20
+  [[menu.main]]
+    identifier = "quality"
+    name       = "Quality"
+    url        = "#quality"
+    weight     = 30
+  [[menu.main]]
+    identifier = "docs"
+    name       = "Docs"
+    url        = "https://go-ndarray.github.io/docs/"
+    weight     = 40

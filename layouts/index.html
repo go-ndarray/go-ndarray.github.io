@@ -1,0 +1,54 @@
+{{ define "main" }}
+<section class="hero">
+  <img class="hero-logo" src="{{ "img/logo.svg" | relURL }}" alt="go-ndarray logo" width="96" height="96">
+  <h1>
+    <span class="accent">{{ .Site.Params.heroAccent }}</span>
+  </h1>
+  {{ with .Site.Params.heroTagline }}<p class="tag">{{ . }}</p>{{ end }}
+  <div class="intro">
+    {{ range .Site.Params.heroIntro }}<p>{{ . | safeHTML }}</p>{{ end }}
+  </div>
+</section>
+
+<section id="why">
+  <h2>Why go-ndarray</h2>
+  <p>
+    NumPy is the lingua franca of numerical computing, but in Go the choices are
+    <code>gonum</code> (matrix-centric, amd64-only assembly) or a C extension. go-ndarray
+    brings the <strong>n-dimensional array</strong> vocabulary &mdash; shapes, strided
+    views, broadcasting, ufuncs, reductions and linear algebra &mdash; to Go with
+    <strong>no cgo</strong>, cross-compiling to a static binary everywhere. The hot paths
+    are multicore + SIMD, so it <strong>beats single-threaded NumPy</strong> on the
+    parallelizable core. It is the cgo-free ndarray the Go and Ruby ecosystems lacked.
+  </p>
+</section>
+
+<section id="repos">
+  <h2>Repositories</h2>
+  <div class="grid">
+    <div class="card">
+      <h4><a href="https://github.com/go-ndarray/ndarray">ndarray</a></h4>
+      <p>The library. Creation (<code>Zeros</code>/<code>Arange</code>/<code>Linspace</code>/…), strided <strong>views</strong>, broadcasting elementwise + ufuncs, reductions (<code>Sum</code>/<code>Max</code>/<code>ArgMax</code>/<code>CumSum</code>/<code>Clip</code>/<code>Where</code>), manipulation (<code>Reshape</code>/<code>Concatenate</code>/<code>Stack</code>), and linalg (<code>MatMul</code>/<code>Dot</code>) via a panel-packed cache-blocked GEMM with a go-asmgen SIMD-FMA micro-kernel.</p>
+    </div>
+    <div class="card">
+      <h4><a href="https://go-ndarray.github.io/docs/">docs</a></h4>
+      <p>Versioned documentation site (MkDocs Material): API reference, the roadmap, and honest benchmark pages versus NumPy 2.2 / OpenBLAS. <a href="https://github.com/go-ndarray/docs">Source →</a></p>
+    </div>
+    <div class="card">
+      <h4><a href="https://github.com/go-ndarray/brand">brand</a></h4>
+      <p>Logos and icons for the organization, in SVG / PNG / JPG / ICO / ICNS across colour, white and black variants.</p>
+    </div>
+  </div>
+</section>
+
+<section id="quality">
+  <h2>Quality bar</h2>
+  <ul class="features">
+    <li><strong>Pure Go.</strong> <code>CGO_ENABLED=0</code> across the org. No cgo, no BLAS shim.</li>
+    <li><strong>100% test coverage.</strong> Gated in CI, differentially checked against <code>numpy</code> 2.2.</li>
+    <li><strong>Faster than NumPy</strong> on the parallelizable core (Add/Mul/Sum/Sqrt/Max and the blocked GEMM) — multicore fan-out + SIMD; honest where tuned BLAS still wins.</li>
+    <li><strong>Multi-arch.</strong> Portable scalar core on all six 64-bit targets; go-asmgen SIMD kernels where the Go assembler allows it.</li>
+    <li><strong>BSD-3-Clause</strong> on every source file.</li>
+  </ul>
+</section>
+{{ end }}
