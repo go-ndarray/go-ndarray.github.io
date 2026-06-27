@@ -46,7 +46,7 @@
   <ul class="features">
     <li><strong>Pure Go.</strong> <code>CGO_ENABLED=0</code> across the org. No cgo, no BLAS shim.</li>
     <li><strong>100% test coverage.</strong> Gated in CI, differentially checked against <code>numpy</code> 2.2.</li>
-    <li><strong>Faster than NumPy</strong> on the parallelizable core (Add/Mul/Sum/Sqrt/Max and the blocked GEMM) — multicore fan-out + SIMD; honest where tuned BLAS still wins.</li>
+    <li><strong>Faster than NumPy</strong> on the parallelizable core (Add/Mul/Sum/Sqrt/Max) — multicore fan-out + SIMD. The packed GEMM reaches <strong>tuned-BLAS parity at 1024&sup2;</strong> (&approx;1.00&times; single-threaded vecLib, ~373 GFLOP/s) and beats the pure-Go <code>gonum</code> <strong>4&ndash;10&times;</strong>; <code>Dot</code> wins at parity. Honest where tuned BLAS still leads at small n.</li>
     <li><strong>Multi-arch.</strong> Portable scalar core on all six 64-bit targets; go-asmgen SIMD kernels where the Go assembler allows it.</li>
     <li><strong>BSD-3-Clause</strong> on every source file.</li>
   </ul>
