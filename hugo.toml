@@ -1,40 +1,87 @@
 baseURL = 'https://go-ndarray.github.io/'
 locale  = 'en-us'
 title   = 'go-ndarray'
-# No theme — layouts live in ./layouts
+# No theme -- the layout is the go-* family template go-fft.github.io uses
+# (itself go-authn.github.io's): one self-contained layouts/index.html,
+# partials/styles.html (inline :root tokens, a verbatim copy of go-fft's) and
+# partials/theme-toggle.html (system / light / dark).
 
-disableKinds = ['taxonomy', 'term', 'rss', 'sitemap']
+disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
+
+[markup.goldmark.renderer]
+  unsafe = true
 
 [params]
   description = "go-ndarray is a pure-Go (CGO=0) NumPy-style n-dimensional array library for float64 — slicing/views, broadcasting, ufuncs, reductions and linear algebra, multicore + SIMD on amd64 and arm64, with a Workspace arena for loops."
-  brand       = "go-ndarray"
-  github      = "go-ndarray"
-  heroAccent  = "go-ndarray"
-  heroTagline = "NumPy-style n-dimensional arrays in pure Go. float64, multicore + SIMD."
 
-  heroIntro = [
-    "<strong>go-ndarray</strong> is the <code>numpy</code> equivalent for Go: a float64 n-dimensional array with creation routines, <strong>strided views that share data</strong>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, and linear algebra (a panel-packed, cache-blocked GEMM) — all in <strong>pure Go, with cgo disabled</strong>.",
-    "Ruby has no cgo-free ndarray (<code>Numo::NArray</code> and <code>NMatrix</code> are C extensions) and <code>gonum</code>'s optimized assembly is amd64-only. go-ndarray pairs a portable pure-Go core with multicore fan-out and, on amd64 and arm64, go-asmgen SIMD kernels; a <code>Workspace</code> arena takes the garbage collector out of loops. Measured against NumPy 2.5.3 on a 16-core Zen 3 it is faster on whole-array and row reductions, on <code>Exp</code> from 256 Ki elements and on <code>MatMul</code> against single-threaded OpenBLAS, and slower against 16-thread BLAS. 100% test coverage is the bar, differentially checked against NumPy."
-  ]
+# The colours are read by partials/styles.html. Emerald, shared with go-fft:
+# the two are one scientific-computing family, told apart by their glyphs.
+# The values are go-fft's, unchanged.
+[params.brand]
+  base   = "#059669"   # emerald-600: accent, primary button, gradient start
+  deep   = "#047857"   # emerald-700: gradient end
+  bright = "#34d399"   # emerald-400: accent in dark mode
+  shadow = "rgba(5,150,105,.7)"
+  chipBg     = "#d1fae5"
+  chipBorder = "#a7f3d0"
+  chipFg     = "#047857"
+  chipBgDark     = "rgba(52,211,153,.14)"
+  chipBorderDark = "rgba(52,211,153,.32)"
+  chipFgDark     = "#6ee7b7"
+  glow        = "rgba(110,231,183,.22)"
+  glow2       = "rgba(5,150,105,.10)"
+  glyphShadow = "rgba(5,150,105,.6)"
+  statsTint   = "#a7f3d0"
+  bandFg      = "#d1fae5"
+  # White on emerald-600 is 3.77:1, under the 4.5:1 body text needs; the band
+  # paragraph and the primary button sit on this gradient, so it runs one step
+  # darker than the accent: 700 -> 800 (white 5.48:1, #d1fae5 4.84:1 at worst).
+  gradFrom    = "#047857"
+  gradTo      = "#065f46"
+  # The hero's accent words: emerald-400 -> 300 on the dark background (the
+  # light theme keeps base -> deep, 600 -> 700).
+  gradTextDark = "linear-gradient(135deg,#34d399,#6ee7b7)"
+  [params.brand.surfaces]
+    ink        = "#052e22"
+    slate      = "#065f46"
+    muted2     = "#047857"
+    line       = "#a7f3d0"
+    bg         = "#f0fdf9"
+    bgSoft     = "#d1fae5"
+    surface    = "#ffffff"
+    navBg      = "rgba(240,253,249,.82)"
+    navBorder  = "#a7f3d0"
+    elevBorder = "#6ee7b7"
+    ghostHover = "#6ee7b7"
+    statsBg    = "#052e22"
+  [params.brand.surfacesDark]
+    ink        = "#d1fae5"
+    slate      = "#a7f3d0"
+    muted2     = "#6ee7b7"
+    line       = "#0a3d2a"
+    bg         = "#04130d"
+    bgSoft     = "#052e22"
+    surface    = "#06291c"
+    navBg      = "rgba(4,19,13,.82)"
+    navBorder  = "#0a3d2a"
+    elevBorder = "#10593d"
+    ghostHover = "#10593d"
+    statsBg    = "#06291c"
 
-[menu]
-  [[menu.main]]
-    identifier = "why"
-    name       = "Why"
-    url        = "#why"
-    weight     = 10
-  [[menu.main]]
-    identifier = "repos"
-    name       = "Repos"
-    url        = "#repos"
-    weight     = 20
-  [[menu.main]]
-    identifier = "quality"
-    name       = "Quality"
-    url        = "#quality"
-    weight     = 30
-  [[menu.main]]
-    identifier = "docs"
-    name       = "Docs"
-    url        = "https://go-ndarray.github.io/docs/"
-    weight     = 40
+# Each repo. Every field is rendered: "name" in the strip under the hero and on
+# its card, "kind" as the card's tag, "href" as both links, "blurb" in full.
+[[params.repos]]
+  name  = "ndarray"
+  kind  = "library · v0.2.2"
+  href  = "https://github.com/go-ndarray/ndarray"
+  blurb = "The library. Creation (<code>Zeros</code>/<code>Arange</code>/<code>Linspace</code>/…), strided <strong>views</strong>, broadcasting elementwise + ufuncs, reductions (<code>Sum</code>/<code>Max</code>/<code>ArgMax</code>/<code>CumSum</code>/<code>Clip</code>/<code>Where</code>), manipulation (<code>Reshape</code>/<code>Concatenate</code>/<code>Stack</code>), linalg (<code>MatMul</code>/<code>Dot</code>) via a panel-packed cache-blocked GEMM with a go-asmgen SIMD-FMA micro-kernel (NEON 4&times;8 on arm64, AVX2/FMA 6&times;8 on amd64), and a <code>Workspace</code> arena for loops (<code>Use</code>/<code>Reset</code>/<code>Detach</code>)."
+[[params.repos]]
+  name  = "docs"
+  kind  = "site"
+  href  = "https://go-ndarray.github.io/docs/"
+  blurb = "Versioned documentation site (MkDocs Material): API reference, the roadmap, and honest benchmark pages versus NumPy 2.5.3 / OpenBLAS 0.3.34. <a href=\"https://github.com/go-ndarray/docs\">Source →</a>"
+[[params.repos]]
+  name  = "brand"
+  kind  = "assets"
+  href  = "https://github.com/go-ndarray/brand"
+  blurb = "Logos and icons for the organization, in SVG / PNG / JPG / ICO / ICNS across colour, white and black variants."
