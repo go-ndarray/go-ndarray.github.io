@@ -72,7 +72,7 @@ disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
 # its card, "kind" as the card's tag, "href" as both links, "blurb" in full.
 [[params.repos]]
   name  = "ndarray"
-  kind  = "library · v0.5.2"
+  kind  = "library · v0.6.0"
   href  = "https://github.com/go-ndarray/ndarray"
   blurb = "The library. Creation (<code>Zeros</code>/<code>Arange</code>/<code>Linspace</code>/…), strided <strong>views</strong>, broadcasting elementwise + ufuncs, reductions (<code>Sum</code>/<code>Max</code>/<code>ArgMax</code>/<code>CumSum</code>/<code>Clip</code>/<code>Where</code>), manipulation (<code>Reshape</code>/<code>Concatenate</code>/<code>Stack</code>), linalg (<code>MatMul</code>/<code>Dot</code>) via a panel-packed cache-blocked GEMM with a go-asmgen SIMD-FMA micro-kernel (NEON 4&times;8 on arm64, AVX2/FMA 6&times;8 on amd64, VSX 8&times;8 on ppc64le, LASX 8&times;8 on loong64), and a <code>Workspace</code> arena for loops (<code>Use</code>/<code>Reset</code>/<code>Detach</code>)."
 [[params.repos]]
