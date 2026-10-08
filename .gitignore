@@ -2,3 +2,6 @@ public/
 resources/
 .hugo_build.lock
 .DS_Store
+# Built by the pages workflow from playground/ (never committed).
+static/playground/playground.wasm
+static/playground/wasm_exec.js

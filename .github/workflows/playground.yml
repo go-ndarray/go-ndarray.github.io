@@ -1,0 +1,131 @@
+# The playground (playground/, a nested Go module): go-ndarray compiled to
+# WebAssembly inside a go-widgets canvas app. Three gates:
+#
+#   test           gofmt, vet, the native suite under -race at 100% statement
+#                  coverage (cmd/playground-wasm is the js-only shell and is
+#                  excluded), the engine suite run AS WebAssembly under node
+#                  (where GOMAXPROCS is 1 and go-ndarray must start no helper
+#                  goroutine), and the wasm build, whose size is reported.
+#   ui-guards      mvvmlint (no direct widget-state writes) and bricolint (no
+#                  hand-drawn UI), each with a negative control proving it bites.
+#   browser-proof  the BUILT page (Hugo + the wasm) in headless Chrome, light
+#                  and dark forced, 1x and 2x: real clicks and keys, asserted on
+#                  the app's state AND on canvas pixels. A missing browser is a
+#                  failure here, never a skip.
+name: playground
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GOWORK: "off"
+  GOTOOLCHAIN: local
+
+jobs:
+  test:
+    name: test, coverage, wasm
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: playground
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.1"
+          cache-dependency-path: playground/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - name: vet (native and js/wasm)
+        run: go vet ./... && GOOS=js GOARCH=wasm go vet ./...
+      - name: test (-race)
+        run: go test -race -count=1 ./...
+      - name: 100% statement coverage
+        run: |
+          go test -count=1 -coverprofile=coverage.out . ./engine ./vm
+          go tool cover -func=coverage.out | tee coverage.txt | tail -1
+          bad=$(awk '$NF!="100.0%"' coverage.txt)
+          [ -z "$bad" ] || { echo "::error::below 100%:"; echo "$bad"; exit 1; }
+      - name: engine suite as WebAssembly (node)
+        run: GOOS=js GOARCH=wasm go test -count=1 -v -run 'TestHelperGoroutines|TestOperations|TestErrors|TestLayout' -exec="$(go env GOROOT)/lib/wasm/go_js_wasm_exec" ./engine
+      - name: wasm build and size
+        run: |
+          GOOS=js GOARCH=wasm go build -trimpath -o /tmp/playground.wasm ./cmd/playground-wasm
+          raw=$(stat -c %s /tmp/playground.wasm); gz=$(gzip -9 -c /tmp/playground.wasm | wc -c)
+          echo "playground.wasm: $raw bytes, $gz gzipped" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  ui-guards:
+    name: mvvmlint + bricolint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: playground
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.1"
+          cache-dependency-path: playground/go.sum
+      - name: install the guards
+        run: |
+          go install github.com/go-widgets/mvvmlint/cmd/mvvmlint@latest
+          go install github.com/go-widgets/bricolint/cmd/bricolint@v0.1.0
+      - name: MVVM only (mvvmlint)
+        run: go vet -vettool="$(go env GOPATH)/bin/mvvmlint" ./...
+      - name: no hand-drawn UI (bricolint)
+        run: go vet -vettool="$(go env GOPATH)/bin/bricolint" ./...
+      - name: negative controls (each guard must bite)
+        run: BRICOLINT="$(go env GOPATH)/bin/bricolint" MVVMLINT="$(go env GOPATH)/bin/mvvmlint" bash hack/lint-negative-controls.sh
+
+  browser-proof:
+    name: browser proof (headless Chrome)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: playground
+    env:
+      PLAYGROUND_REQUIRE_BROWSER: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.1"
+          cache-dependency-path: playground/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.167.0"
+          extended: true
+      - name: install headless Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+        with:
+          chrome-version: stable
+          install-dependencies: true
+      - name: install puppeteer-core
+        run: npm install --no-save --prefix "${{ runner.temp }}/pptr" puppeteer-core@24.43.1
+      - name: run the proof
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}
+          PLAYGROUND_NODE_PATH: ${{ runner.temp }}/pptr/node_modules
+          PLAYGROUND_CAPTURE_DIR: ${{ runner.temp }}/captures
+        run: go test -count=1 -v -run TestBrowserProof .
+      - name: keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playground-captures
+          path: ${{ runner.temp }}/captures
+          if-no-files-found: ignore

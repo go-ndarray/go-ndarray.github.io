@@ -27,3 +27,9 @@ jobs:
               || { echo "::error::$repo is not on the page"; exit 1; }
           done
           echo "the page names every repository this org has"
+      - name: the playground page is built and linked
+        run: |
+          test -f public/playground/index.html || { echo "::error::no /playground/ page"; exit 1; }
+          grep -q 'id=nd-canvas' public/playground/index.html || { echo "::error::the playground page has no canvas"; exit 1; }
+          grep -qE 'href="?/playground/"?' public/index.html || { echo "::error::the landing does not link to the playground"; exit 1; }
+          echo "the playground page is built, and the landing links to it"

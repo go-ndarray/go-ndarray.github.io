@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playground — {{ .Site.Title }}</title>
+<meta name="description" content="Try go-ndarray in your browser: create arrays, apply views, broadcasting, ufuncs, reductions and linear algebra step by step, and see shapes, strides, values, timings and the equivalent Go and NumPy code. go-ndarray itself, compiled to WebAssembly.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+{{ partial "styles.html" . }}
+<style>
+  /* Playground-only rules, kept off the landing. The page is the landing's
+     nav bar over ONE go-widgets canvas that fills the rest of the window; the
+     app inside draws its own widgets, recoloured from the page theme. */
+  html,body{height:100%}
+  body.pg{display:flex;flex-direction:column;overflow:hidden}
+  .pg .nav{position:relative}
+  .stage{position:relative;flex:1;min-height:0;background:var(--bg)}
+  #nd-canvas{display:block;width:100%;height:100%;opacity:0;transition:opacity .2s}
+  .stage.ready #nd-canvas{opacity:1}
+  #pg-load{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--slate);font-size:14px}
+  .stage.ready #pg-load{display:none}
+  .pg-track{width:min(420px,72%);height:8px;border-radius:6px;background:var(--line);overflow:hidden}
+  .pg-fill{height:100%;width:0;background:var(--accent);transition:width .15s ease}
+  #pg-pct{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+  #pg-err{display:none;max-width:680px;margin:0 16px;padding:11px 13px;border-radius:10px;background:#fdecec;color:#9b1c1c;white-space:pre-wrap;font:12.5px/1.45 ui-monospace,Menlo,monospace}
+  :root[data-theme="dark"] #pg-err{background:#3a1113;color:#f7b4b4}
+  @media(prefers-color-scheme:dark){:root:not([data-theme]) #pg-err{background:#3a1113;color:#f7b4b4}}
+  #pg-err.show{display:block}
+  .pg .nav nav a.here{color:var(--ink)}
+</style>
+</head>
+<body class="lm pg">
+  <header class="nav"><div class="wrap">
+    <a class="brand" href="/"><img class="glyph" src="/img/logo.svg" width="32" height="32" alt="go-ndarray logo"> go-ndarray</a>
+    <nav><a href="/">Home</a><a href="/docs/">Docs</a><a class="here" href="/playground/">Playground</a></nav>
+    {{ partial "theme-toggle.html" . }}
+    <a class="btn btn-ghost" href="https://github.com/go-ndarray/ndarray">{{ partial "icons/github.html" . }}GitHub</a>
+  </div></header>
+
+  <div class="stage">
+    <canvas id="nd-canvas" aria-label="go-ndarray playground: an interactive canvas application"></canvas>
+    <div id="pg-load">
+      <div id="pg-msg">Downloading go-ndarray compiled to WebAssembly…</div>
+      <div class="pg-track"><div class="pg-fill" id="pg-fill"></div></div>
+      <div id="pg-pct">0%</div>
+      <div id="pg-err"></div>
+    </div>
+  </div>
+  <noscript><p style="padding:16px">The playground runs go-ndarray compiled to WebAssembly and needs JavaScript to start it.</p></noscript>
+
+{{/* Both files are build artifacts: the pages workflow compiles the wasm from
+     playground/ and copies wasm_exec.js from the SAME Go toolchain, so the two
+     always match. Neither is committed. ?v= is the deployed commit, so a new
+     deploy is a new URL and a cached copy can only be the bytes it names. */}}
+{{ $sha := .Site.Params.wasmsha }}
+{{ $wasm := "/playground/playground.wasm" }}
+{{ $exec := "/playground/wasm_exec.js" }}
+{{ with $sha }}{{ $wasm = printf "%s?v=%s" $wasm . }}{{ $exec = printf "%s?v=%s" $exec . }}{{ end }}
+{{ $bytes := 0 }}{{ with (os.Stat "static/playground/playground.wasm") }}{{ $bytes = .Size }}{{ end }}
+<script>
+  /* Go's wasm runtime reads globalThis.fs/process/path; an element id of the
+     same name would shadow them and kill the runtime at init. None here. */
+</script>
+<script src="{{ $exec }}"></script>
+<script>
+"use strict";
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var wasmURL={{ $wasm }};
+  // The decompressed size, read at build time: Pages serves the wasm gzipped,
+  // so Content-Length is the compressed size while the reader below counts
+  // decompressed bytes. 0 when the wasm was not built (a bare `hugo server`).
+  var wasmBytes={{ $bytes }};
+
+  function isDark(){
+    var t=document.documentElement.getAttribute("data-theme");
+    if(t==="dark") return true;
+    if(t==="light") return false;
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+  function syncTheme(){ if(globalThis.ndarraySetTheme) globalThis.ndarraySetTheme(isDark()); }
+  // The nav bar's toggle (styles.html) writes data-theme; follow it, and the
+  // OS preference while it is on System.
+  new MutationObserver(syncTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+  if(window.matchMedia){ try{ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",syncTheme); }catch(e){} }
+
+  function progress(f){
+    var fill=$("pg-fill"), pct=$("pg-pct");
+    if(f==null){ fill.style.width="100%"; fill.style.opacity=".45"; pct.textContent="…"; return; }
+    var p=Math.max(0,Math.min(100,Math.round(f*100)));
+    fill.style.opacity="1"; fill.style.width=p+"%"; pct.textContent=p+"%";
+  }
+  function fail(e){
+    $("pg-msg").textContent="The playground failed to load.";
+    var err=$("pg-err");
+    err.textContent=String(e)+(location.protocol==="file:"?"\n(serve the page over HTTP: a page opened from a file cannot fetch the wasm)":"\n(a hard refresh may help if a stale copy is cached)");
+    err.classList.add("show");
+  }
+  function fetchWasm(url){
+    return fetch(url).then(function(r){
+      if(!r.ok) throw new Error("HTTP "+r.status+" fetching "+url);
+      var total=wasmBytes||parseInt(r.headers.get("Content-Length")||"0",10)||0;
+      if(!r.body||!r.body.getReader) return r.arrayBuffer();
+      var reader=r.body.getReader(), got=0, chunks=[];
+      return (function pump(){
+        return reader.read().then(function(res){
+          if(res.done){
+            var buf=new Uint8Array(got), pos=0;
+            chunks.forEach(function(c){ buf.set(c,pos); pos+=c.length; });
+            return buf.buffer;
+          }
+          chunks.push(res.value); got+=res.value.length;
+          progress(total?got/total:null);
+          return pump();
+        });
+      })();
+    });
+  }
+  function start(){
+    if(typeof Go!=="function"){ fail("wasm_exec.js did not load"); return; }
+    var go=new Go();
+    fetchWasm(wasmURL).then(function(ab){
+      progress(1);
+      $("pg-msg").textContent="Starting…";
+      return WebAssembly.instantiate(ab,go.importObject);
+    }).then(function(res){
+      go.run(res.instance);
+      var t=setInterval(function(){
+        if(globalThis.ndarrayPlaygroundReady){
+          clearInterval(t);
+          syncTheme();
+          document.querySelector(".stage").classList.add("ready");
+        }
+      },30);
+    }).catch(fail);
+  }
+  if(document.readyState!=="loading") start(); else document.addEventListener("DOMContentLoaded",start);
+})();
+</script>
+</body>
+</html>
