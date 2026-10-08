@@ -10,6 +10,7 @@ package vm
 import (
 	"fmt"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -388,7 +389,24 @@ func (v *ViewModel) status() {
 	if n == 1 {
 		s = "1 step"
 	}
-	v.Status.Set(fmt.Sprintf("%s · go-ndarray v0.7.0 compiled to WebAssembly (%s)", s, v.Runtime))
+	v.Status.Set(fmt.Sprintf("%s · go-ndarray %s compiled to WebAssembly (%s)", s, ndarrayVersion(), v.Runtime))
+}
+
+// ndarrayVersion is the go-ndarray version linked into this binary, read
+// from the build info so the status line cannot drift from go.mod.
+func ndarrayVersion() string {
+	return moduleVersion(debug.ReadBuildInfo)
+}
+
+func moduleVersion(read func() (*debug.BuildInfo, bool)) string {
+	if bi, ok := read(); ok {
+		for _, d := range bi.Deps {
+			if d.Path == "github.com/go-ndarray/ndarray" {
+				return d.Version
+			}
+		}
+	}
+	return "(unknown version)"
 }
 
 // SetRuntime replaces the runtime description of the status line.

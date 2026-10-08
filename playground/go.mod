@@ -3,7 +3,7 @@ module github.com/go-ndarray/go-ndarray.github.io/playground
 go 1.27.1
 
 require (
-	github.com/go-ndarray/ndarray v0.7.0
+	github.com/go-ndarray/ndarray v0.7.1
 	github.com/go-widgets/mvvm v0.13.0
 	github.com/go-widgets/mvvmtk v0.14.1
 	github.com/go-widgets/painter v0.15.0

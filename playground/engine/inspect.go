@@ -15,7 +15,7 @@ import (
 // value: its shape, its strides and offset (in elements, the unit go-ndarray
 // stores them in), and the span of the storage it points into.
 //
-// go-ndarray v0.7.0 exports neither the strides nor the storage, so Layout
+// go-ndarray v0.7.1 exports neither the strides nor the storage, so Layout
 // reads the unexported fields through reflect — read-only, and without
 // unsafe. This is the one place the playground depends on go-ndarray's
 // internals; TestLayoutReadsTheLibrary fails if the fields are renamed, so a

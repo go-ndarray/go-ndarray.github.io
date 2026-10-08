@@ -30,7 +30,7 @@ Widgets used: `Label`, `DropDown`, `ListBox`, `Entry`, `Button`,
 `Table.CellFill` with `toolkit.Viridis`, added to go-widgets/toolkit for this
 page.
 
-Strides are not exported by go-ndarray v0.7.0; `engine.LayoutOf` reads the
+Strides are not exported by go-ndarray v0.7.1; `engine.LayoutOf` reads the
 `strides`, `offset` and `data` fields through `reflect` (read-only, no
 `unsafe`), and `TestLayoutReadsTheLibrary` fails if a release renames them.
 

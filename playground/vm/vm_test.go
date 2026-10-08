@@ -4,6 +4,7 @@
 package vm
 
 import (
+	"runtime/debug"
 	"strings"
 	"testing"
 	"time"
@@ -222,4 +223,18 @@ func TestBrokenPreset(t *testing.T) {
 	if v.Steps.Len() != 1 || !strings.HasPrefix(v.Error.Get(), "ndarray: shape mismatch") {
 		t.Errorf("%d steps, error %q", v.Steps.Len(), v.Error.Get())
 	}
+}
+
+func TestModuleVersion(t *testing.T) {
+	bi := &debug.BuildInfo{Deps: []*debug.Module{{Path: "x"}, {Path: "github.com/go-ndarray/ndarray", Version: "v9.9.9"}}}
+	if moduleVersion(func() (*debug.BuildInfo, bool) { return bi, true }) != "v9.9.9" {
+		t.Error("version from build info")
+	}
+	if moduleVersion(func() (*debug.BuildInfo, bool) { return nil, false }) != "(unknown version)" {
+		t.Error("no build info")
+	}
+	if moduleVersion(func() (*debug.BuildInfo, bool) { return &debug.BuildInfo{}, true }) != "(unknown version)" {
+		t.Error("not linked")
+	}
+	_ = ndarrayVersion()
 }

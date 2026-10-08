@@ -52,7 +52,7 @@ jobs:
         run: go test -race -count=1 ./...
       - name: 100% statement coverage
         run: |
-          go test -count=1 -coverprofile=coverage.out ./...
+          go test -count=1 -coverprofile=coverage.out . ./engine ./vm
           go tool cover -func=coverage.out | tee coverage.txt | tail -1
           bad=$(awk '$NF!="100.0%"' coverage.txt)
           [ -z "$bad" ] || { echo "::error::below 100%:"; echo "$bad"; exit 1; }
