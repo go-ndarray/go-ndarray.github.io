@@ -11,11 +11,9 @@
 <body class="lm">
   <header class="nav"><div class="wrap">
     <a class="brand" href="/"><img class="glyph" src="/img/logo.svg" width="32" height="32" alt="go-ndarray logo"> go-ndarray</a>
-    <nav><a href="#features">Why</a><a href="#repos">Repos</a><a href="#quality">Quality</a><a href="https://go-ndarray.github.io/docs/">Docs</a></nav>
+    <nav><a href="#features">Why</a><a href="#check">Example</a><a href="#api">API</a><a href="#repos">Repositories</a></nav>
     {{ partial "theme-toggle.html" . }}
-    {{- /* GitHub mark: Octicons "mark-github" (16px), @primer/octicons v19.38.0,
-           build/svg/mark-github-16.svg, MIT License (c) GitHub Inc. Path copied verbatim. */}}
-    <a class="btn btn-ghost" href="https://github.com/go-ndarray"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true" focusable="false"><path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg>GitHub</a>
+    <a class="btn btn-ghost" href="https://github.com/go-ndarray">{{ partial "icons/github.html" . }}GitHub</a>
   </div></header>
 
   <div class="hero"><div class="wrap">
@@ -23,10 +21,10 @@
       <h1 class="head">NumPy-style n-dimensional arrays in pure Go.<br><span class="accent">float64, multicore + SIMD.</span></h1>
       <p class="sub"><b>go-ndarray</b> is the <code>numpy</code> equivalent for Go: a float64 n-dimensional array with creation routines, <b>strided views that share data</b>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, and linear algebra (a panel-packed, cache-blocked GEMM) — all in <b>pure Go, with cgo disabled</b>.</p>
       <div class="cta">
-        <a class="btn btn-primary" href="https://github.com/go-ndarray">Browse the repositories →</a>
-        <a class="btn btn-ghost" href="https://go-ndarray.github.io/docs/">Read the docs</a>
+        <a class="btn btn-primary" href="https://go-ndarray.github.io/docs/">Read the documentation →</a>
+        <a class="btn btn-ghost" href="https://github.com/go-ndarray/ndarray">{{ partial "icons/github.html" . }}Browse the source</a>
       </div>
-      <div class="trust"><span><b>{{ len .Site.Params.repos }}</b> repositories</span><span><b>CGO_ENABLED=0</b>, no BLAS shim</span><span><b>100%</b> test coverage</span></div>
+      <div class="trust"><span><b>{{ len .Site.Params.families }}</b> API families, NumPy's names</span><span><b>5</b> SIMD targets</span><span><b>CGO=0</b> no BLAS shim</span></div>
     </div>
     {{/* Lines taken verbatim from the Example section of go-ndarray/ndarray's README at v0.2.2. */}}
     <div class="term">
@@ -57,20 +55,51 @@ prod, _ := m.MatMul(b)              <span class="c-com">// (2,3)·(3,2) -> (2,2)
     <div class="mods">{{ range .Site.Params.repos }}<a href="{{ .href }}">{{ .name }}</a>{{ end }}</div>
   </div></div>
 
+  <section id="check" style="padding-top:10px"><div class="wrap">
+    <span class="eyebrow">Ask it, do not take our word</span>
+    <h2>The example above, <i>actually run</i>.</h2>
+    <p class="lead">The lines in the hero, built into a program against the published module and run. Views share data, broadcasting stretches <code>row</code> over both rows, and <code>MatMul</code> goes through the same cache-blocked SIMD kernel as a 4096² product. The output below is a real run, with nothing edited.</p>
+    <div class="term" style="margin-top:22px">
+      <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="t">go run ./ndcheck — zsh</span></div>
+{{/* Verbatim: go run of the hero's lines against
+     github.com/go-ndarray/ndarray v0.7.0, on an Apple M4 (arm64),
+     2026-10-08. Re-run it and paste its output when the API changes; never
+     retype a value here. */}}
+<pre style="white-space:pre;overflow-x:auto"><span class="c-com"># go-ndarray v0.7.0 — each step of the example, printed</span>
+<span class="c-cmd">$ go run</span> ./ndcheck
+<span class="c-out">m         Array(shape=[2 3], data=[0 1 2 3 4 5])
+m + row   Array(shape=[2 3], data=[10 21 32 13 24 35])
+m.T       Array(shape=[3 2], data=[0 3 1 4 2 5])
+sum(m,0)  Array(shape=[3], data=[3 5 7])
+m[:,0]    Array(shape=[2], data=[0 3])
+m @ b     Array(shape=[2 2], data=[10 13 28 40])</span></pre>
+    </div>
+  </div></section>
+
   <section id="features"><div class="wrap">
     <span class="eyebrow">Why go-ndarray</span>
     <h2>The n-dimensional array, <i>without</i> cgo.</h2>
-    <p class="lead">NumPy is the lingua franca of numerical computing, but in Go the choices are <code>gonum</code> (matrix-centric, amd64-only assembly) or a C extension. go-ndarray brings the <b>n-dimensional array</b> vocabulary — shapes, strided views, broadcasting, ufuncs, reductions and linear algebra — to Go with <b>no cgo</b>, cross-compiling to a static binary everywhere. The hot paths are multicore, and SIMD on amd64, arm64, ppc64le and loong64.</p>
+    <p class="lead">NumPy is the lingua franca of numerical computing, but in Go the choices are <code>gonum</code> (matrix-centric, amd64-only assembly) or a C extension. go-ndarray brings the <b>n-dimensional array</b> vocabulary — shapes, strided views, broadcasting, ufuncs, reductions and linear algebra — to Go with <b>no cgo</b>, cross-compiling to a static binary everywhere. The hot paths are multicore, and SIMD on amd64, arm64, ppc64le, loong64 and riscv64.</p>
     <div class="grid" id="quality">
       <div class="card"><div class="ico">🐹</div><h3>Pure Go</h3><p><code>CGO_ENABLED=0</code> across the org. No cgo, no BLAS shim.</p></div>
       <div class="card"><div class="ico">✅</div><h3>100% test coverage</h3><p>Gated in CI, differentially checked against <code>numpy</code>.</p></div>
       <div class="card"><div class="ico">🔢</div><h3>NumPy semantics</h3><p>Row-major strided arrays, <b>NumPy broadcasting</b>, and NumPy basic-indexing <code>Slice</code> returning strided views that share data.</p></div>
       <div class="card"><div class="ico">♻️</div><h3><code>Workspace</code> arena for loops</h3><p>Bind the inputs with <code>ws.Use</code>, compute as usual, <code>ws.Reset()</code> at the end of each pass: results stop costing the garbage collector anything. On a Zen 3, <code>x + y</code> on 1&nbsp;024 elements drops from 2.6 to 0.38&nbsp;µs (2.1× NumPy).</p></div>
-      <div class="card"><div class="ico">⚡</div><h3>SIMD on amd64, arm64, ppc64le &amp; loong64</h3><p>go-asmgen SIMD kernels on amd64 (SSE2, AVX2/FMA picked at run time), arm64 (NEON), ppc64le (VSX) and loong64 (LASX, when the CPU has it); riscv64, s390x and the 32-bit targets run the same pure-Go code those kernels are tested against.</p></div>
+      <div class="card"><div class="ico">⚡</div><h3>SIMD on amd64, arm64, ppc64le, loong64 &amp; riscv64</h3><p>go-asmgen SIMD kernels on amd64 (SSE2, AVX2/FMA picked at run time), arm64 (NEON), ppc64le (VSX) and loong64 (LASX, when the CPU has it) and riscv64 (RVV, when the CPU has it); riscv64, s390x and the 32-bit targets run the same pure-Go code those kernels are tested against.</p></div>
       <div class="card"><div class="ico">🎯</div><h3>Accurate <code>Exp</code>/<code>Log</code></h3><p>Ports of Arm's optimized-routines: worst 0.504 / 0.508 ULP against a 300-bit reference, and correct where Go's amd64 <code>math.Exp</code> returns +Inf (<a href="https://github.com/golang/go/issues/81995"><u>golang/go#81995</u></a>) and <code>math.Log</code> is wrong on subnormals (<a href="https://github.com/golang/go/issues/56600"><u>golang/go#56600</u></a>).</p></div>
       <div class="card"><div class="ico">🧪</div><h3>Multi-arch CI</h3><p>The suite runs on amd64, arm64 and 386 natively and on riscv64/loong64/ppc64le/s390x/arm under qemu, on Linux, macOS and Windows, and compiles for every <code>GOOS/GOARCH</code> pair Go supports; v0.2.0 was also run on real amd64, arm64, ppc64le, riscv64 and loong64 hardware.</p></div>
       <div class="card"><div class="ico">💎</div><h3>The cgo-free ndarray that was missing</h3><p>Ruby has no cgo-free ndarray (<code>Numo::NArray</code> and <code>NMatrix</code> are C extensions) and <code>gonum</code>'s optimized assembly is amd64-only. go-ndarray pairs a portable pure-Go core with multicore fan-out and SIMD kernels.</p></div>
       <div class="card"><div class="ico">⚖️</div><h3>BSD-3-Clause</h3><p><code>Exp</code> and <code>Log</code> are MIT-licensed ports of Arm's optimized-routines.</p></div>
+    </div>
+  </div></section>
+
+  <section id="api" style="padding-top:10px"><div class="wrap">
+    <span class="eyebrow">What the module offers</span>
+    <h2>{{ len .Site.Params.families }} families, <i>NumPy's names</i>.</h2>
+    <div class="grid">
+      {{ range .Site.Params.families }}
+      <div class="card"><h3>{{ .name }}</h3><p>{{ .what | markdownify }}</p></div>
+      {{ end }}
     </div>
   </div></section>
 
@@ -100,8 +129,8 @@ prod, _ := m.MatMul(b)              <span class="c-com">// (2,3)·(3,2) -> (2,2)
   <section id="eco" style="padding-top:6px"><div class="wrap">
     <div class="band">
       <h2>The cgo-free ndarray the Go and Ruby ecosystems lacked.</h2>
-      <p>No cgo, no BLAS shim. A portable pure-Go core, multicore, with SIMD kernels on amd64, arm64, ppc64le and loong64 and a <code>Workspace</code> arena that takes the garbage collector out of loops. Faster than NumPy on whole-array and row reductions, on large <code>Exp</code> and on <code>MatMul</code> against single-threaded BLAS, slower against 16-thread BLAS — the numbers are on the <a href="https://go-ndarray.github.io/docs/latest/performance/"><u>performance page</u></a>.</p>
-      <a class="btn btn-ghost" href="https://github.com/go-ndarray/ndarray">Read the source on GitHub →</a>
+      <p>No cgo, no BLAS shim. A portable pure-Go core, multicore, with SIMD kernels on amd64, arm64, ppc64le, loong64 and riscv64 and a <code>Workspace</code> arena that takes the garbage collector out of loops. Faster than NumPy on whole-array and row reductions, on large <code>Exp</code> and on <code>MatMul</code> against single-threaded BLAS, slower against 16-thread BLAS — the numbers are on the <a href="https://go-ndarray.github.io/docs/latest/performance/"><u>performance page</u></a>.</p>
+      <a class="btn btn-ghost" href="https://github.com/go-ndarray/ndarray">{{ partial "icons/github.html" . }}Read the source on GitHub →</a>
     </div>
   </div></section>
 
