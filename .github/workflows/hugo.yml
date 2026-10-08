@@ -53,10 +53,34 @@ jobs:
         id: pages
         uses: actions/configure-pages@v6
 
+      # The playground's two assets are build artifacts, never committed: the
+      # wasm compiled from playground/ at this commit, and wasm_exec.js taken
+      # from the SAME toolchain (the two must match). Built before Hugo, which
+      # reads the wasm's size for the loader's progress bar.
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.27.1"
+          cache-dependency-path: playground/go.sum
+
+      - name: Build the playground
+        working-directory: playground
+        env:
+          GOWORK: "off"
+          GOTOOLCHAIN: local
+        run: |
+          mkdir -p ../static/playground
+          GOOS=js GOARCH=wasm go build -trimpath \
+            -ldflags "-s -w -X main.buildVersion=$(git rev-parse --short HEAD)" \
+            -o ../static/playground/playground.wasm ./cmd/playground-wasm
+          cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" ../static/playground/
+
       - name: Build
         env:
           HUGO_ENVIRONMENT: production
           HUGO_ENV: production
+          # Cache-busts the playground assets: a new deploy is a new URL.
+          HUGO_PARAMS_WASMSHA: ${{ github.sha }}
         run: |
           hugo \
             --gc \
