@@ -3,7 +3,11 @@
 
 package playground
 
-import "github.com/go-widgets/toolkit"
+import (
+	"runtime"
+
+	"github.com/go-widgets/toolkit"
+)
 
 // Debug is a snapshot of what the scene shows, for the browser proofs: they
 // assert on it after driving the page with real mouse and keyboard events.
@@ -23,6 +27,12 @@ type Debug struct {
 	Dark     bool     `json:"dark"`
 	Status   string   `json:"status"`
 	Code     string   `json:"code"`
+	Ops      []string `json:"ops"`
+	Presets  []string `json:"presets"`
+	// Goroutines and MaxProcs let a proof watch go-ndarray's helper pool
+	// under GOOS=js: GOMAXPROCS is 1 there, so no helper should ever start.
+	Goroutines int `json:"goroutines"`
+	MaxProcs   int `json:"maxProcs"`
 }
 
 // Debug reports the scene's current state.
@@ -34,6 +44,8 @@ func (s *State) Debug() Debug {
 		Title: v.Title.Get(), Shape: v.Shape.Get(), Memory: v.Memory.Get(), Timing: v.Timing.Get(),
 		Rows: len(s.table.Rows), Cols: len(s.table.Columns),
 		Dark: s.dark, Status: v.Status.Get(), Code: v.Code.Get(),
+		Ops: v.OpNames, Presets: v.PresetNames,
+		Goroutines: runtime.NumGoroutine(), MaxProcs: runtime.GOMAXPROCS(0),
 	}
 	if i := v.InputIndex.Get(); i >= 0 && i < v.Inputs.Len() {
 		d.Input = v.Inputs.At(i)

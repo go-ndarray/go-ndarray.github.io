@@ -41,7 +41,9 @@ func SetupText(scale float64) {
 		scale = 1
 	}
 	toolkit.SetMetricScale(scale)
-	_ = toolkit.UseOpenTypeTextSize(int(float64(baseFontPx)*scale + 0.5))
+	// Logical pixels: the toolkit renders the face at size × MetricScale
+	// itself (and re-renders it when the scale changes).
+	_ = toolkit.UseOpenTypeTextSize(baseFontPx)
 }
 
 // State is the View: the widgets, their layout, the ViewModel they are bound
@@ -85,8 +87,11 @@ type State struct {
 
 	status *toolkit.Label
 
-	root, body, left, right *box
-	formBtns, codeBar, top  *toolkit.HBox
+	// The box tree. The boxes are the toolkit's own types, not wrappers: the
+	// focus system walks them to find the widget that receives the keyboard.
+	root, left, right      *toolkit.VBox
+	body                   toolkit.Widget // an HBox, or a VBox when narrow
+	formBtns, codeBar, top *toolkit.HBox
 
 	dropdowns []*toolkit.DropDown
 
@@ -98,34 +103,18 @@ type State struct {
 	unbind []func()
 }
 
-// box is a VBox or an HBox: the body flips between the two with the width.
-type box struct {
-	toolkit.Widget
-	add func(w toolkit.Widget, fixed, flex int)
-}
-
-func newVBox(spacing int) *box {
+// vbox makes a VBox with the given spacing.
+func vbox(spacing int) *toolkit.VBox {
 	b := toolkit.NewVBox()
 	b.Spacing = spacing
-	return &box{Widget: b, add: func(w toolkit.Widget, fixed, flex int) {
-		if flex > 0 {
-			b.AddFlex(w, flex)
-		} else {
-			b.AddFixed(w, fixed)
-		}
-	}}
+	return b
 }
 
-func newHBox(spacing int) *box {
+// hbox makes an HBox with the given spacing.
+func hbox(spacing int) *toolkit.HBox {
 	b := toolkit.NewHBox()
 	b.Spacing = spacing
-	return &box{Widget: b, add: func(w toolkit.Widget, fixed, flex int) {
-		if flex > 0 {
-			b.AddFlex(w, flex)
-		} else {
-			b.AddFixed(w, fixed)
-		}
-	}}
+	return b
 }
 
 // NewState builds the View over a fresh ViewModel, w×h device pixels.
@@ -218,59 +207,58 @@ func (s *State) layout() {
 	sc := toolkit.Scaled
 	narrow := s.w < sc(narrowW)
 
-	s.top = toolkit.NewHBox()
-	s.top.Spacing = sc(gap)
+	s.top = hbox(sc(gap))
 	s.top.AddFlex(s.title, 1)
-	s.top.AddFixed(s.presets, sc(240))
+	s.top.AddFixed(s.presets, sc(260))
 	s.top.AddFixed(s.reset, sc(80))
 
-	s.formBtns = toolkit.NewHBox()
-	s.formBtns.Spacing = sc(gap)
+	s.formBtns = hbox(sc(gap))
 	s.formBtns.AddFlex(s.apply, 1)
 	s.formBtns.AddFlex(s.undo, 1)
 
-	s.left = newVBox(sc(gap / 2))
-	s.left.add(s.pipeLbl, sc(labelH), 0)
-	s.left.add(s.steps, 0, 1)
-	s.left.add(s.opLbl, sc(labelH), 0)
-	s.left.add(s.ops, sc(rowH), 0)
-	s.left.add(s.inLbl, sc(labelH), 0)
-	s.left.add(s.inputs, sc(rowH), 0)
-	s.left.add(s.hint, sc(labelH), 0)
-	s.left.add(s.args, sc(rowH), 0)
-	s.left.add(s.formBtns, sc(rowH+2), 0)
-	s.left.add(s.errLabel, sc(labelH), 0)
+	s.left = vbox(sc(gap / 2))
+	s.left.AddFixed(s.pipeLbl, sc(labelH))
+	s.left.AddFlex(s.steps, 1)
+	s.left.AddFixed(s.opLbl, sc(labelH))
+	s.left.AddFixed(s.ops, sc(rowH))
+	s.left.AddFixed(s.inLbl, sc(labelH))
+	s.left.AddFixed(s.inputs, sc(rowH))
+	s.left.AddFixed(s.hint, sc(labelH))
+	s.left.AddFixed(s.args, sc(rowH))
+	s.left.AddFixed(s.formBtns, sc(rowH+2))
+	s.left.AddFixed(s.errLabel, sc(labelH))
 
-	s.codeBar = toolkit.NewHBox()
-	s.codeBar.Spacing = sc(gap)
+	s.codeBar = hbox(sc(gap))
 	s.codeBar.AddFlex(s.lang, 1)
 	s.codeBar.AddFixed(s.copyB, sc(90))
 
-	s.right = newVBox(sc(2))
-	s.right.add(s.stTitle, sc(labelH+4), 0)
-	s.right.add(s.shape, sc(labelH), 0)
-	s.right.add(s.memory, sc(labelH), 0)
-	s.right.add(s.timing, sc(labelH), 0)
-	s.right.add(s.goLine, sc(labelH), 0)
-	s.right.add(s.pyLine, sc(labelH), 0)
-	s.right.add(s.note, sc(labelH), 0)
-	s.right.add(s.table, 0, 1)
-	s.right.add(s.codeBar, sc(rowH+2), 0)
-	s.right.add(s.code, sc(codeH), 0)
+	s.right = vbox(sc(2))
+	s.right.AddFixed(s.stTitle, sc(labelH+4))
+	s.right.AddFixed(s.shape, sc(labelH))
+	s.right.AddFixed(s.memory, sc(labelH))
+	s.right.AddFixed(s.timing, sc(labelH))
+	s.right.AddFixed(s.goLine, sc(labelH))
+	s.right.AddFixed(s.pyLine, sc(labelH))
+	s.right.AddFixed(s.note, sc(labelH))
+	s.right.AddFlex(s.table, 1)
+	s.right.AddFixed(s.codeBar, sc(rowH+2))
+	s.right.AddFixed(s.code, sc(codeH))
 
 	if narrow {
-		s.body = newVBox(sc(gap * 2))
-		s.body.add(s.left, sc(stackedTop), 0)
-		s.body.add(s.right, 0, 1)
+		b := vbox(sc(gap * 2))
+		b.AddFixed(s.left, sc(stackedTop))
+		b.AddFlex(s.right, 1)
+		s.body = b
 	} else {
-		s.body = newHBox(sc(gap * 2))
-		s.body.add(s.left, sc(leftW), 0)
-		s.body.add(s.right, 0, 1)
+		b := hbox(sc(gap * 2))
+		b.AddFixed(s.left, sc(leftW))
+		b.AddFlex(s.right, 1)
+		s.body = b
 	}
-	s.root = newVBox(sc(gap))
-	s.root.add(s.top, sc(barH), 0)
-	s.root.add(s.body, 0, 1)
-	s.root.add(s.status, sc(labelH), 0)
+	s.root = vbox(sc(gap))
+	s.root.AddFixed(s.top, sc(barH))
+	s.root.AddFlex(s.body, 1)
+	s.root.AddFixed(s.status, sc(labelH))
 	m := sc(margin)
 	s.root.SetBounds(toolkit.Rect{X: m, Y: m, W: s.w - 2*m, H: s.h - 2*m})
 	s.dirty = true

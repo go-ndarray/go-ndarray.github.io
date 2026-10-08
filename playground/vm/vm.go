@@ -119,6 +119,7 @@ func New() *ViewModel {
 
 	v.OpIndex.SubscribeChanged(v.opChanged)
 	v.Selected.SubscribeChanged(v.showSelected)
+	v.Selected.SubscribeChanged(v.followSelection)
 	v.CodeLang.SubscribeChanged(v.showCode)
 	// Picking a preset loads it: the menu is the action.
 	v.PresetIndex.SubscribeChanged(v.LoadPreset.Execute)
@@ -255,6 +256,22 @@ func stepRow(st engine.Step) string {
 		call = st.Input + "." + st.Op
 	}
 	return st.Name + " = " + call + "(" + st.Args + ")  " + engine.ShapeText(st.Layout.Shape)
+}
+
+// followSelection makes the selected step the input of the next one, when
+// its result is an array: inspecting a step is the usual prelude to applying
+// something to it.
+func (v *ViewModel) followSelection() {
+	i := v.Selected.Get()
+	if i < 0 || i >= len(v.session.Steps) {
+		return
+	}
+	name := v.session.Steps[i].Name
+	for j := 0; j < v.Inputs.Len(); j++ {
+		if v.Inputs.At(j) == name {
+			v.InputIndex.Set(j)
+		}
+	}
 }
 
 // showSelected publishes the selected step's details, or blanks them.
