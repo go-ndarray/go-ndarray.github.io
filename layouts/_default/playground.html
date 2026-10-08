@@ -93,7 +93,7 @@
   function fail(e){
     $("pg-msg").textContent="The playground failed to load.";
     var err=$("pg-err");
-    err.textContent=String(e)+(location.protocol==="file:"?"\n(open the page over http://, file:// cannot fetch the wasm)":"\n(a hard refresh may help if a stale copy is cached)");
+    err.textContent=String(e)+(location.protocol==="file:"?"\n(serve the page over HTTP: a page opened from a file cannot fetch the wasm)":"\n(a hard refresh may help if a stale copy is cached)");
     err.classList.add("show");
   }
   function fetchWasm(url){
