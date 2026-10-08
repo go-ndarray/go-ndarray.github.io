@@ -21,7 +21,7 @@
       <h1 class="head">NumPy-style n-dimensional arrays in pure Go.<br><span class="accent">float64, multicore + SIMD.</span></h1>
       <p class="sub"><b>go-ndarray</b> is the <code>numpy</code> equivalent for Go: a float64 n-dimensional array with creation routines, <b>strided views that share data</b>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, and linear algebra (a panel-packed, cache-blocked GEMM) — all in <b>pure Go, with cgo disabled</b>.</p>
       <div class="cta">
-        <a class="btn btn-primary" href="https://go-ndarray.github.io/docs/">Read the documentation →</a>
+        <a class="btn btn-primary" href="https://go-ndarray.github.io/docs/">{{ partial "icons/book.html" . }}Read the documentation →</a>
         <a class="btn btn-ghost" href="https://github.com/go-ndarray/ndarray">{{ partial "icons/github.html" . }}Browse the source</a>
       </div>
       <div class="trust"><span><b>{{ len .Site.Params.families }}</b> API families, NumPy's names</span><span><b>5</b> SIMD targets</span><span><b>CGO=0</b> no BLAS shim</span></div>
