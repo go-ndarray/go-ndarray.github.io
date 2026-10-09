@@ -11,7 +11,7 @@
 <body class="lm">
   <header class="nav"><div class="wrap">
     <a class="brand" href="/"><img class="glyph" src="/img/logo.svg" width="32" height="32" alt="go-ndarray logo"> go-ndarray</a>
-    <nav><a href="#features">Why</a><a href="#check">Example</a><a href="#api">API</a><a href="#repos">Repositories</a><a href="/playground/">Playground</a></nav>
+    <nav><a href="#features">Why</a><a href="#check">Example</a><a href="#api">API</a><a href="#repos">Repositories</a></nav>
     {{ partial "theme-toggle.html" . }}
   </div></header>
   {{ partial "fork-ribbon.html" "https://github.com/go-ndarray/ndarray" }}
@@ -22,6 +22,7 @@
       <p class="sub"><b>go-ndarray</b> is the <code>numpy</code> equivalent for Go: a float64 n-dimensional array with creation routines, <b>strided views that share data</b>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, and linear algebra (a panel-packed, cache-blocked GEMM) — all in <b>pure Go, with cgo disabled</b>.</p>
       <div class="cta">
         <a class="btn btn-primary" href="https://go-ndarray.github.io/docs/">{{ partial "icons/book.html" . }}Read the documentation →</a>
+        <a class="btn btn-ghost" href="/playground/">{{ partial "icons/play.html" . }}Try it in your browser</a>
       </div>
       <div class="trust"><span><b>{{ len .Site.Params.families }}</b> API families, NumPy's names</span><span><b>6</b> SIMD targets</span><span><b>CGO=0</b> no BLAS shim</span></div>
     </div>
