@@ -23,7 +23,7 @@ disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
   name  = "docs"
   kind  = "site"
   href  = "https://go-ndarray.github.io/docs/"
-  blurb = "Versioned documentation site (MkDocs Material): API reference, the roadmap, and honest benchmark pages versus NumPy 2.5.3 / OpenBLAS 0.3.34. <a href=\"https://github.com/go-ndarray/docs\">Source →</a>"
+  blurb = "Versioned documentation site (Hugo + Hextra): API reference, the roadmap, and honest benchmark pages versus NumPy 2.5.3 / OpenBLAS 0.3.34. <a href=\"https://github.com/go-ndarray/docs\">Source →</a>"
 [[params.repos]]
   name  = "brand"
   kind  = "assets"
