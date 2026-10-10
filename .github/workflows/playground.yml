@@ -124,7 +124,7 @@ jobs:
         run: go test -count=1 -v -run TestBrowserProof .
       - name: keep the screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playground-captures
           path: ${{ runner.temp }}/captures
