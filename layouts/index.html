@@ -11,10 +11,10 @@
 <body class="lm">
   <header class="nav"><div class="wrap">
     <a class="brand" href="/"><img class="glyph" src="/img/logo.svg" width="32" height="32" alt="go-ndarray logo"> go-ndarray</a>
-    <nav><a href="#features">Why</a><a href="#check">Example</a><a href="#api">API</a><a href="#repos">Repositories</a><a href="/playground/">Playground</a></nav>
+    <nav><a href="#features">Why</a><a href="#check">Example</a><a href="#api">API</a><a href="#repos">Repositories</a></nav>
     {{ partial "theme-toggle.html" . }}
-    <a class="btn btn-ghost" href="https://github.com/go-ndarray">{{ partial "icons/github.html" . }}GitHub</a>
   </div></header>
+  {{ partial "fork-ribbon.html" "https://github.com/go-ndarray/ndarray" }}
 
   <div class="hero"><div class="wrap">
     <div>
@@ -22,9 +22,9 @@
       <p class="sub"><b>go-ndarray</b> is the <code>numpy</code> equivalent for Go: a float64 n-dimensional array with creation routines, <b>strided views that share data</b>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, and linear algebra (a panel-packed, cache-blocked GEMM) — all in <b>pure Go, with cgo disabled</b>.</p>
       <div class="cta">
         <a class="btn btn-primary" href="https://go-ndarray.github.io/docs/">{{ partial "icons/book.html" . }}Read the documentation →</a>
-        <a class="btn btn-ghost" href="https://github.com/go-ndarray/ndarray">{{ partial "icons/github.html" . }}Browse the source</a>
+        <a class="btn btn-ghost" href="/playground/">{{ partial "icons/play.html" . }}Try it in your browser</a>
       </div>
-      <div class="trust"><span><b>{{ len .Site.Params.families }}</b> API families, NumPy's names</span><span><b>5</b> SIMD targets</span><span><b>CGO=0</b> no BLAS shim</span></div>
+      <div class="trust"><span><b>{{ len .Site.Params.families }}</b> API families, NumPy's names</span><span><b>6</b> SIMD targets</span><span><b>CGO=0</b> no BLAS shim</span></div>
     </div>
     {{/* Lines taken verbatim from the Example section of go-ndarray/ndarray's README at v0.2.2. */}}
     <div class="term">
@@ -85,7 +85,7 @@ m @ b     Array(shape=[2 2], data=[10 13 28 40])</span></pre>
       <div class="card"><div class="ico">✅</div><h3>100% test coverage</h3><p>Gated in CI, differentially checked against <code>numpy</code>.</p></div>
       <div class="card"><div class="ico">🔢</div><h3>NumPy semantics</h3><p>Row-major strided arrays, <b>NumPy broadcasting</b>, and NumPy basic-indexing <code>Slice</code> returning strided views that share data.</p></div>
       <div class="card"><div class="ico">♻️</div><h3><code>Workspace</code> arena for loops</h3><p>Bind the inputs with <code>ws.Use</code>, compute as usual, <code>ws.Reset()</code> at the end of each pass: results stop costing the garbage collector anything. On a Zen 3, <code>x + y</code> on 1&nbsp;024 elements drops from 2.6 to 0.38&nbsp;µs (2.1× NumPy).</p></div>
-      <div class="card"><div class="ico">⚡</div><h3>SIMD on every 64-bit target</h3><p>go-asmgen SIMD kernels on amd64 (SSE2, AVX2/FMA picked at run time), arm64 (NEON), ppc64le (VSX), loong64 (LASX, when the CPU has it), riscv64 (RVV, when the CPU has it) and s390x (vector facility, validated under emulation only); the 32-bit targets run the same pure-Go code those kernels are tested against.</p></div>
+      <div class="card"><div class="ico">⚡</div><h3>SIMD on every 64-bit target</h3><p>go-asmgen SIMD kernels on amd64 (SSE2, AVX2/FMA picked at run time), arm64 (NEON), ppc64le (VSX), loong64 (LASX, when the CPU has it), riscv64 (RVV, when the CPU has it) and s390x (vector facility, measured on a real IBM z17); the 32-bit targets run the same pure-Go code those kernels are tested against.</p></div>
       <div class="card"><div class="ico">🎯</div><h3>Accurate <code>Exp</code>/<code>Log</code></h3><p>Ports of Arm's optimized-routines: worst 0.504 / 0.508 ULP against a 300-bit reference, and correct where Go's amd64 <code>math.Exp</code> returns +Inf (<a href="https://github.com/golang/go/issues/81995"><u>golang/go#81995</u></a>) and <code>math.Log</code> is wrong on subnormals (<a href="https://github.com/golang/go/issues/56600"><u>golang/go#56600</u></a>).</p></div>
       <div class="card"><div class="ico">🧪</div><h3>Multi-arch CI</h3><p>The suite runs on amd64, arm64 and 386 natively and on riscv64/loong64/ppc64le/s390x/arm under qemu, on Linux, macOS and Windows, and compiles for every <code>GOOS/GOARCH</code> pair Go supports; v0.2.0 was also run on real amd64, arm64, ppc64le, riscv64 and loong64 hardware.</p></div>
       <div class="card"><div class="ico">💎</div><h3>The cgo-free ndarray that was missing</h3><p>Ruby has no cgo-free ndarray (<code>Numo::NArray</code> and <code>NMatrix</code> are C extensions) and <code>gonum</code>'s optimized assembly is amd64-only. go-ndarray pairs a portable pure-Go core with multicore fan-out and SIMD kernels.</p></div>
@@ -110,7 +110,7 @@ m @ b     Array(shape=[2 2], data=[10 13 28 40])</span></pre>
       <div><div class="n">3.7–5.9×</div><div class="l">single-threaded OpenBLAS 0.3.34 on <code>MatMul</code> from 512² (Zen 3)</div></div>
       <div><div class="n">≤ 0.51</div><div class="l">ULP for <code>Exp</code>/<code>Log</code>, ports of Arm's optimized-routines</div></div>
     </div>
-    <p class="lead" style="max-width:none;margin-top:28px"><b>Measured, wins and losses.</b> Against NumPy 2.5.3 + OpenBLAS 0.3.34 on a 16-core AMD Zen 3: <b>faster</b> on whole-array <code>Sum</code>/<code>Mean</code>/<code>Max</code> at 4&nbsp;Mi (2.3–4.5×), <code>SumAxis(1)</code> (2.2×), <code>MaxAxis(1)</code> (1.7×), <code>Exp</code> from 256&nbsp;Ki elements (2.4–5.6×) and <code>MatMul</code> against single-threaded OpenBLAS (3.7–5.9× from 512²); <b>slower</b> against 16-thread OpenBLAS (<code>MatMul</code> 0.55× at 1024², <code>Dot</code>/mat·vec 0.16×) and on allocating elementwise forms outside a <code>Workspace</code>. On Apple silicon the packed GEMM reaches <b>tuned-BLAS parity at 1024²</b> and beats the pure-Go <code>gonum</code> <b>4–10×</b>.</p>
+    <p class="lead" style="max-width:none;margin-top:28px"><b>Measured, wins and losses.</b> Against NumPy 2.5.3 + OpenBLAS 0.3.34 on a 16-core AMD Zen 3: <b>faster</b> on whole-array <code>Sum</code>/<code>Mean</code>/<code>Max</code> at 4&nbsp;Mi (2.3–4.5×), <code>SumAxis(1)</code> (2.2×), <code>MaxAxis(1)</code> (1.7×), <code>Exp</code> from 256&nbsp;Ki elements (2.4–5.6×) and <code>MatMul</code> against single-threaded OpenBLAS (3.7–5.9× from 512²); <b>slower</b> against 16-thread OpenBLAS (<code>MatMul</code> 0.42× at 512² and 0.51× at 1024², though 1.44× faster at 256²; <code>Dot</code> 0.69× and mat·vec 0.52×, all measured in one run with NumPy) and on allocating elementwise forms outside a <code>Workspace</code>. On Apple silicon the packed GEMM reaches <b>tuned-BLAS parity at 1024²</b> and beats the pure-Go <code>gonum</code> <b>4–10×</b>. On the other targets, against its own scalar code on one core: on a RISC-V SpacemiT X60 the RVV kernels make <code>Sum</code> up to <b>5.8×</b> faster and cut <code>MatMul</code> time by 31–45%; on an IBM z17 the s390x kernels take <code>MatMul</code> 1024² from 340 to <b>70&nbsp;ms</b> and cut <code>Max</code> by 92–96%.</p>
   </div></section>
 
   <section id="repos" style="padding-top:20px"><div class="wrap">

@@ -16,14 +16,14 @@ disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
 
 [[params.repos]]
   name  = "ndarray"
-  kind  = "library · v0.8.0"
+  kind  = "library · v0.9.1"
   href  = "https://github.com/go-ndarray/ndarray"
-  blurb = "The library. Creation (<code>Zeros</code>/<code>Arange</code>/<code>Linspace</code>/…), strided <strong>views</strong>, broadcasting elementwise + ufuncs, reductions (<code>Sum</code>/<code>Max</code>/<code>ArgMax</code>/<code>CumSum</code>/<code>Clip</code>/<code>Where</code>), manipulation (<code>Reshape</code>/<code>Concatenate</code>/<code>Stack</code>), linalg (<code>MatMul</code>/<code>Dot</code>) via a panel-packed cache-blocked GEMM with a go-asmgen SIMD-FMA micro-kernel (NEON 4&times;8 on arm64, AVX2/FMA 6&times;8 on amd64, VSX 8&times;8 on ppc64le, LASX 8&times;8 on loong64, RVV 6&times;8 on riscv64), and a <code>Workspace</code> arena for loops (<code>Use</code>/<code>Reset</code>/<code>Detach</code>)."
+  blurb = "The library. Creation (<code>Zeros</code>/<code>Arange</code>/<code>Linspace</code>/…), strided <strong>views</strong>, broadcasting elementwise + ufuncs, reductions (<code>Sum</code>/<code>Max</code>/<code>ArgMax</code>/<code>CumSum</code>/<code>Clip</code>/<code>Where</code>), manipulation (<code>Reshape</code>/<code>Concatenate</code>/<code>Stack</code>), linalg (<code>MatMul</code>/<code>Dot</code>) via a panel-packed cache-blocked GEMM with a go-asmgen SIMD-FMA micro-kernel (NEON 4&times;8 on arm64, AVX2/FMA 6&times;8 on amd64, VSX 8&times;8 on ppc64le, LASX 8&times;8 on loong64, RVV 6&times;8 on riscv64, 4&times;8 on s390x), and a <code>Workspace</code> arena for loops (<code>Use</code>/<code>Reset</code>/<code>Detach</code>)."
 [[params.repos]]
   name  = "docs"
   kind  = "site"
   href  = "https://go-ndarray.github.io/docs/"
-  blurb = "Versioned documentation site (MkDocs Material): API reference, the roadmap, and honest benchmark pages versus NumPy 2.5.3 / OpenBLAS 0.3.34. <a href=\"https://github.com/go-ndarray/docs\">Source →</a>"
+  blurb = "Versioned documentation site (Hugo + Hextra): API reference, the roadmap, and honest benchmark pages versus NumPy 2.5.3 / OpenBLAS 0.3.34. <a href=\"https://github.com/go-ndarray/docs\">Source →</a>"
 [[params.repos]]
   name  = "brand"
   kind  = "assets"
