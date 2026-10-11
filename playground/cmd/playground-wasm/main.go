@@ -19,7 +19,7 @@
 //
 // and it calls two functions of the page's: ndarrayRubyLoad(onProgress), a
 // Promise that downloads and starts go-embedded-ruby, and rbgoEval(src), which
-// that module publishes.
+// that module publishes, through the page's guard ndarrayRubyEval(src).
 //
 // The page owns the theme: the landing's own System/Light/Dark toggle sits in
 // its nav bar, and a change of data-theme reaches the canvas through
@@ -180,6 +180,9 @@ func main() {
 		render()
 	}
 	js.Global().Call("addEventListener", "resize", js.FuncOf(func(js.Value, []js.Value) any { refit(); return nil }))
+	// The Ruby tab adds the output panel: when stacked (a phone) the scene needs
+	// more height, so the canvas is refitted whenever the tab changes.
+	state.VM.CodeLang.SubscribeChanged(refit)
 
 	js.Global().Set("ndarraySetTheme", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		if len(args) > 0 {
@@ -231,7 +234,7 @@ func main() {
 		load.Invoke(onProgress).Call("then", onOK, onErr)
 	}
 	state.VM.RubyEval = func(src string) (string, string) {
-		r := js.Global().Call("rbgoEval", src)
+		r := js.Global().Call("ndarrayRubyEval", src)
 		out, errText := r.Get("output"), r.Get("error")
 		s := ""
 		if out.Type() == js.TypeString {

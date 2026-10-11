@@ -122,14 +122,24 @@ jobs:
           install-dependencies: true
       - name: install puppeteer-core
         run: npm install --no-save --prefix "${{ runner.temp }}/pptr" puppeteer-core@24.43.1
+      # The Ruby tab's interpreter, built as the deploy builds it, once for both
+      # Ruby checks below.
+      - name: build go-embedded-ruby (js/wasm)
+        working-directory: playground/rubywasm
+        run: |
+          GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o "$RUNNER_TEMP/rbgo.wasm" github.com/go-embedded-ruby/ruby/cmd/wasm
+          raw=$(stat -c %s "$RUNNER_TEMP/rbgo.wasm"); gz=$(gzip -9 -c "$RUNNER_TEMP/rbgo.wasm" | wc -c)
+          echo "rbgo.wasm ($(go list -m -f '{{.Version}}' github.com/go-embedded-ruby/ruby)): $raw bytes, $gz gzipped" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: run the proof
         env:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
           PLAYGROUND_NODE_PATH: ${{ runner.temp }}/pptr/node_modules
           PLAYGROUND_CAPTURE_DIR: ${{ runner.temp }}/captures
-        # The proof builds the Ruby wasm too (go-embedded-ruby, about 100 MB) and
-        # downloads it twice in Chrome: give it more than go test's 10 minutes.
-        run: go test -count=1 -timeout 30m -v -run TestBrowserProof .
+          PLAYGROUND_RUBY_WASM: ${{ runner.temp }}/rbgo.wasm
+        # TestRubyAgreesWithGo runs every operation's Ruby program on the
+        # interpreter. The proof downloads its ~100 MB twice in Chrome: give the
+        # run more than go test's 10 minutes.
+        run: go test -count=1 -timeout 30m -v -run 'TestBrowserProof|TestRubyAgreesWithGo' . ./engine
       - name: keep the screenshots
         if: always()
         uses: actions/upload-artifact@v7

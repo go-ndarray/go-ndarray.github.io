@@ -151,6 +151,17 @@
     rubyLoading.catch(function(){ rubyLoading=null; });
     return rubyLoading;
   };
+  // rbgoEval, guarded: a Go panic in the interpreter ends its runtime, and a
+  // call into a stopped runtime throws. Report that as the run's error rather
+  // than throwing into the playground's own runtime.
+  globalThis.ndarrayRubyEval=function(src){
+    try{
+      var r=globalThis.rbgoEval(src);
+      return r||{output:"",error:"go-embedded-ruby returned nothing"};
+    }catch(e){
+      return {output:"",error:"go-embedded-ruby stopped ("+String(e)+"): reload the page to restart it"};
+    }
+  };
   function start(){
     if(typeof Go!=="function"){ fail("wasm_exec.js did not load"); return; }
     var go=new Go();

@@ -385,6 +385,15 @@ func TestRubyTabLayout(t *testing.T) {
 	buf := make([]byte, testW*testH*4)
 	s.Draw(buf)
 
+	// Narrow: the output goes under the program, and the scene needs more
+	// height than on the Go tab, which the host gives it (MinHeight).
+	ruby := s.MinHeight(600)
+	v.CodeLang.Set(0)
+	goTab := s.MinHeight(600)
+	v.CodeLang.Set(1)
+	if ruby <= goTab {
+		t.Errorf("stacked, the Ruby tab needs %d px, the Go tab %d", ruby, goTab)
+	}
 	// Narrow: the output goes under the program.
 	s.Resize(600, 1400)
 	if o, c := s.rbOut.Bounds(), s.code.Bounds(); o.Y < c.Y+c.H || o.H <= 0 {

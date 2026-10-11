@@ -28,7 +28,7 @@ in the page and prints every step, then the selected step's `shape` and `to_a`. 
 | `engine` | the model: the operation catalog, argument parsing, running a step (timed), its Go, Ruby and NumPy spellings, and the layout of a result read from go-ndarray's `Array` |
 | `vm` | the ViewModel: every piece of state as a `go-widgets/mvvm` Observable, ObservableList or Command; no widget |
 | `.` (`playground`) | the View: toolkit widgets in box layouts, bound to the ViewModel (`mvvmtk`, plus `view_binding.go`); event routing through the root box |
-| `cmd/playground-wasm` | the browser shell: canvas at device pixels, input forwarding, `ndarraySetTheme`, `ndarrayDebug`/`ndarrayRects` for the proofs, and the Ruby hooks (`ndarrayRubyLoad`, `rbgoEval`) |
+| `cmd/playground-wasm` | the browser shell: canvas at device pixels, input forwarding, `ndarraySetTheme`, `ndarrayDebug`/`ndarrayRects` for the proofs, and the Ruby hooks (`ndarrayRubyLoad`, `ndarrayRubyEval` around `rbgoEval`) |
 | `rubywasm` | a module of its own that only pins go-embedded-ruby (`tool` directive): the deploy builds its `cmd/wasm` from here, and Renovate bumps the pin |
 
 Widgets used: `Label`, `DropDown`, `ListBox`, `Entry`, `Button`,
@@ -105,5 +105,10 @@ toolchain). **Run** then calls its `rbgoEval(src)` and shows the output.
 The browser proof counts the requests for `rbgo.wasm`: none through the Go and
 NumPy tabs, one when the Ruby tab opens, still one after two runs. It runs the
 README example in Ruby and requires the printed `shape` and `to_a` to equal
-go-ndarray's result for the same step. `PLAYGROUND_RUBY_WASM=<file>` tests a
-prebuilt interpreter instead of building the pinned one.
+go-ndarray's result for the same step. `TestRubyAgreesWithGo` (in `engine`) goes
+further, without a browser: it runs the Ruby program of every operation case
+and of every step of every preset on the interpreter under node
+(`engine/testdata/rbeval.cjs`) and compares each printed shape and value with
+go-ndarray's. Both read `PLAYGROUND_RUBY_WASM=<file>`, a prebuilt
+interpreter (the proof builds the pinned one without it; CI builds it once
+for both).

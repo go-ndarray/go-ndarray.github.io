@@ -269,6 +269,8 @@ async function run(scheme, dpr, vp = DESKTOP, opts = {}) {
       try { rbShape = JSON.parse(lines[lines.length - 2]); rbValues = JSON.parse(lines[lines.length - 1]); } catch (e) { rbShape = rbValues = String(e); }
       check(tag + "Ruby's g.shape equals go-ndarray's", JSON.stringify(rbShape) === JSON.stringify(goShape), JSON.stringify(rbShape) + " vs " + JSON.stringify(goShape));
       check(tag + "Ruby's g.to_a equals go-ndarray's values", Array.isArray(rbValues) && rbValues.length === goValues.length && rbValues.every((x, i) => x === goValues[i]), JSON.stringify(rbValues) + " vs " + JSON.stringify(goValues));
+      const ro = (await rects()).rubyOut;
+      check(tag + "the output panel fits inside the canvas (refitted for the Ruby tab)", ro.h > 40 && ro.y + ro.h <= canvasBox.h - 20, JSON.stringify(ro) + " in " + canvasBox.h);
       const op = await pixels((await rects()).rubyOut);
       check(tag + "the output is on screen (non-background pixels)", op.length / 4 - count(op, BG[scheme], 6) > 200, op.length / 4 - count(op, BG[scheme], 6));
       await page.screenshot({ path: shot("ruby-ran") });
