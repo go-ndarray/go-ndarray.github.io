@@ -26,7 +26,13 @@ function check(name, ok, detail) {
 const BG = { light: [0xff, 0xff, 0xff], dark: [0x0b, 0x0e, 0x14] };
 const VIRIDIS_ENDS = [[0x44, 0x01, 0x54], [0xfd, 0xe7, 0x25]];
 
-async function run(scheme, dpr) {
+// The cases: the forced scheme, the device pixel ratio and the viewport. A
+// phone is set with page.setViewport (isMobile, hasTouch), because headless
+// Chrome's --window-size cannot go that narrow.
+const DESKTOP = { width: 1400, height: 900 };
+const PHONE = { width: 390, height: 844, isMobile: true, hasTouch: true, name: "phone" };
+
+async function run(scheme, dpr, vp = DESKTOP) {
   const browser = await puppeteer.launch({
     executablePath: chrome, headless: true,
     args: ["--no-sandbox", "--disable-gpu", "--blink-settings=preferredColorScheme=" + (scheme === "dark" ? 0 : 1)],
@@ -36,13 +42,14 @@ async function run(scheme, dpr) {
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
-    await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: dpr });
+    await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: dpr, isMobile: !!vp.isMobile, hasTouch: !!vp.hasTouch });
     await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }]);
     await page.evaluateOnNewDocument(() => { try { localStorage.removeItem("theme"); } catch (e) {} });
     await page.goto(url, { waitUntil: "load" });
     await page.waitForFunction(() => globalThis.ndarrayPlaygroundReady === true &&
       document.querySelector(".stage").classList.contains("ready"), { timeout: 60000 });
-    const tag = scheme + "@" + dpr + "x: ";
+    const tag = scheme + "@" + dpr + "x" + (vp.name ? " " + vp.name : "") + ": ";
+    const shot = (what) => path.join(captureDir, what + "-" + scheme + "-" + dpr + "x" + (vp.name ? "-" + vp.name : "") + ".png");
 
     const debug = async () => JSON.parse(await page.evaluate(() => ndarrayDebug()));
     const canvasBox = await page.evaluate(() => { const r = document.getElementById("nd-canvas").getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
@@ -90,6 +97,29 @@ async function run(scheme, dpr) {
       await page.keyboard.type(text);
     };
 
+    // 0. A capture of the opened page first, so a failure below still leaves
+    //    the picture of what was on screen.
+    await page.screenshot({ path: shot("loaded") });
+    // 0b. The viewport is the one asked for, and the canvas fits it: no
+    //     horizontal overflow, and something other than the background is
+    //     painted across it.
+    const fit = await page.evaluate(() => {
+      const c = document.getElementById("nd-canvas");
+      const r = c.getBoundingClientRect();
+      return { iw: innerWidth, dpr: devicePixelRatio, left: r.left, right: r.right, cw: c.width,
+        scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth };
+    });
+    // Measured against the width ASKED for: on a mobile viewport Chrome widens
+    // the layout viewport to fit overflowing content, so innerWidth alone
+    // would follow the overflow it is meant to catch.
+    check(tag + "the canvas fits the viewport width", fit.left >= 0 && fit.right <= vp.width + 0.5, fit.left + ".." + fit.right + " of " + vp.width);
+    check(tag + "the page does not scroll horizontally", fit.scroll <= vp.width && fit.client <= vp.width, "scrollWidth " + fit.scroll + ", clientWidth " + fit.client + " of " + vp.width);
+    check(tag + "the viewport is " + vp.width + " CSS px at " + dpr + "x", fit.iw === vp.width && fit.dpr === dpr, fit.iw + " @ " + fit.dpr);
+    check(tag + "the canvas backing store matches the device pixels", Math.abs(fit.cw - Math.round((fit.right - fit.left) * dpr)) <= dpr, fit.cw);
+    const all = await pixels({ x: 0, y: 0, w: canvasBox.w, h: Math.min(canvasBox.h, 400) });
+    const painted = all.length / 4 - count(all, BG[scheme], 6);
+    check(tag + "the app rendered something (non-background pixels)", painted > 1000, painted + " px");
+
     // 1. The page opened on the README example, in the forced theme.
     let d = await debug();
     check(tag + "opens on the README example (7 steps)", d.steps.length === 7, d.steps.length);
@@ -103,7 +133,7 @@ async function run(scheme, dpr) {
     const heat = count(tp, VIRIDIS_ENDS[0], 12) + count(tp, VIRIDIS_ENDS[1], 12);
     check(tag + "the table is painted as a heatmap (viridis end colours on screen)", heat > 200, heat + " px");
     check(tag + "the memory line names the layout", /strides \(3, 1\) elements/.test(d.memory), d.memory);
-    await page.screenshot({ path: path.join(captureDir, "open-" + scheme + "-" + dpr + "x.png") });
+    await page.screenshot({ path: shot("open") });
 
     // 2. Click a step of the pipeline: b, the reshaped view.
     const st = (await rects()).steps;
@@ -141,7 +171,7 @@ async function run(scheme, dpr) {
     const ep = await pixels((await rects()).error);
     const red = scheme === "dark" ? [0xf7, 0x8b, 0x8b] : [0xb4, 0x23, 0x18];
     check(tag + "the error is on screen in red", count(ep, red, 40) > 20, count(ep, red, 40) + " px");
-    await page.screenshot({ path: path.join(captureDir, "error-" + scheme + "-" + dpr + "x.png") });
+    await page.screenshot({ path: shot("error") });
 
     // 5. The code panel: Go program, then the NumPy equivalent.
     check(tag + "the Go program is shown", d.code.startsWith("package main") && d.code.includes("ndarray.Arange(0, 6, 1)"), d.code.slice(0, 40));
@@ -203,6 +233,8 @@ async function run(scheme, dpr) {
     await run("light", 1);
     await run("dark", 1);
     await run("light", 2);
+    await run("dark", 2);
+    await run("light", 3, PHONE);
     console.log("RESULT " + JSON.stringify({ ok: true, results }));
   } catch (e) {
     console.log("RESULT " + JSON.stringify({ ok: false, error: String(e.message || e), results }));

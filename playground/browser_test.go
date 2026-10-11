@@ -21,7 +21,8 @@ import (
 // TestBrowserProof builds the page exactly as the deploy does — the wasm from
 // this module, wasm_exec.js from the same toolchain, then Hugo — serves it,
 // and runs browsertest/driver.cjs against it in headless Chrome, light and
-// dark with the scheme forced, at 1x and 2x. See the driver for what it
+// dark with the scheme forced, at 1x and 2x (both schemes), and on a phone
+// viewport (390x844 CSS px at 3x, mobile, touch). See the driver for what it
 // checks. It skips when Chrome, node, puppeteer-core or Hugo is missing,
 // unless PLAYGROUND_REQUIRE_BROWSER=1 (CI), where a skip would be a pass that
 // proved nothing.

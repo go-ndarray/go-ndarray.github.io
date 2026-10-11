@@ -9,8 +9,10 @@
 #   ui-guards      mvvmlint (no direct widget-state writes) and bricolint (no
 #                  hand-drawn UI), each with a negative control proving it bites.
 #   browser-proof  the BUILT page (Hugo + the wasm) in headless Chrome, light
-#                  and dark forced, 1x and 2x: real clicks and keys, asserted on
-#                  the app's state AND on canvas pixels. A missing browser is a
+#                  and dark forced, 1x and 2x, plus a phone (390x844 at 3x,
+#                  mobile, touch): real clicks and keys, asserted on the app's
+#                  state AND on canvas pixels, and the canvas must fit the
+#                  viewport width. A missing browser is a
 #                  failure here, never a skip.
 name: playground
 
