@@ -145,7 +145,21 @@ func main() {
 		return changed
 	})
 
+	// grow makes the canvas at least as tall as the scene needs at its width
+	// (State.MinHeight, non-zero only when the columns stack) and lets the
+	// stage scroll; otherwise the canvas fills the stage, as before.
+	stage := canvas.Get("parentElement")
+	grow := func() {
+		d := dpr()
+		need := int(float64(state.MinHeight(int(canvas.Get("clientWidth").Float()*d+0.5)))/d + 0.999)
+		if need > stage.Get("clientHeight").Int() {
+			canvas.Get("style").Set("height", strconv.Itoa(need)+"px")
+		} else {
+			canvas.Get("style").Set("height", "")
+		}
+	}
 	refit := func() {
+		grow()
 		nw, nh, nd := deviceSize()
 		ow, oh := state.Size()
 		if nw == ow && nh == oh && nd == curDPR {
@@ -186,6 +200,7 @@ func main() {
 		return string(b)
 	}))
 
+	refit() // a narrow window may need a taller canvas than the stage
 	render()
 	js.Global().Set("ndarrayPlaygroundReady", true)
 	select {}

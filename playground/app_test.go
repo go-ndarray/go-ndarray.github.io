@@ -187,6 +187,43 @@ func TestResizeStacksWhenNarrow(t *testing.T) {
 	}
 }
 
+// TestMinHeightOnAPhone is the layout the browser proof's phone case found
+// broken: 390×844 CSS pixels at 3× gave the table 0 px, ran the code panel
+// under the status line and clipped the title to "gc".
+func TestMinHeightOnAPhone(t *testing.T) {
+	s := newTestState(t, false)
+	if got := s.MinHeight(testW); got != 0 {
+		t.Errorf("side by side, MinHeight = %d, want 0", got)
+	}
+	SetupText(3)
+	defer SetupText(1)
+	w, h := 390*3, 779*3 // the canvas under the nav bar, in device pixels
+	s.Resize(w, h)
+	before := s.Rects()
+	need := s.MinHeight(w)
+	if need <= h {
+		t.Fatalf("MinHeight(%d) = %d: the 779 px a phone leaves were enough, yet they gave the table %d px",
+			w, need, before["table"].H)
+	}
+	if gw, gh := s.Size(); gw != w || gh != h || s.table.Bounds() != before["table"] {
+		t.Error("MinHeight changed the scene it measured")
+	}
+	s.Resize(w, need)
+	if got, want := s.table.Bounds().H, toolkit.Scaled(minTableH); got != want {
+		t.Errorf("at MinHeight the table is %d px, want %d", got, want)
+	}
+	code, status := s.code.Bounds(), s.status.Bounds()
+	if code.Y+code.H > status.Y {
+		t.Errorf("the code panel (to %d) runs under the status line (from %d)", code.Y+code.H, status.Y)
+	}
+	if status.Y+status.H > need {
+		t.Errorf("the status line (to %d) runs off the canvas (%d)", status.Y+status.H, need)
+	}
+	if tw, pw := s.title.Bounds().W, s.presets.Bounds().W; tw < w/2 || pw < w/2 {
+		t.Errorf("narrow top bar: title %d px, presets %d px, of %d", tw, pw, w)
+	}
+}
+
 func TestSetTheme(t *testing.T) {
 	s := newTestState(t, false)
 	s.SetTheme(true)
