@@ -89,9 +89,10 @@ type State struct {
 
 	// The box tree. The boxes are the toolkit's own types, not wrappers: the
 	// focus system walks them to find the widget that receives the keyboard.
-	root, left, right      *toolkit.VBox
-	body                   toolkit.Widget // an HBox, or a VBox when narrow
-	formBtns, codeBar, top *toolkit.HBox
+	root, left, right *toolkit.VBox
+	body              toolkit.Widget // an HBox, or a VBox when narrow
+	formBtns, codeBar *toolkit.HBox
+	top               toolkit.Widget // an HBox, or a VBox (title above the presets) when narrow
 
 	dropdowns []*toolkit.DropDown
 
@@ -207,10 +208,24 @@ func (s *State) layout() {
 	sc := toolkit.Scaled
 	narrow := s.w < sc(narrowW)
 
-	s.top = hbox(sc(gap))
-	s.top.AddFlex(s.title, 1)
-	s.top.AddFixed(s.presets, sc(260))
-	s.top.AddFixed(s.reset, sc(80))
+	// On a narrow screen the presets and reset take the whole width, so the
+	// title gets a row of its own: beside them a 390 px phone left it 10 px.
+	topH := sc(barH)
+	if narrow {
+		pick := hbox(sc(gap))
+		pick.AddFlex(s.presets, 1)
+		pick.AddFixed(s.reset, sc(80))
+		top := vbox(sc(gap))
+		top.AddFixed(s.title, sc(barH))
+		top.AddFixed(pick, sc(barH))
+		s.top, topH = top, sc(2*barH+gap)
+	} else {
+		top := hbox(sc(gap))
+		top.AddFlex(s.title, 1)
+		top.AddFixed(s.presets, sc(260))
+		top.AddFixed(s.reset, sc(80))
+		s.top = top
+	}
 
 	s.formBtns = hbox(sc(gap))
 	s.formBtns.AddFlex(s.apply, 1)
@@ -256,7 +271,7 @@ func (s *State) layout() {
 		s.body = b
 	}
 	s.root = vbox(sc(gap))
-	s.root.AddFixed(s.top, sc(barH))
+	s.root.AddFixed(s.top, topH)
 	s.root.AddFlex(s.body, 1)
 	s.root.AddFixed(s.status, sc(labelH))
 	m := sc(margin)
@@ -268,6 +283,34 @@ func (s *State) layout() {
 func (s *State) Resize(w, h int) {
 	s.w, s.h = max(w, 1), max(h, 1)
 	s.layout()
+}
+
+// minTableH is the least height, in logical pixels, the stacked layout leaves
+// the table: a header and a few rows.
+const minTableH = 6 * rowH
+
+// MinHeight is the least height, in device pixels, the scene needs at width
+// w. Side by side it is 0: every widget fits whatever the window gives. Stacked,
+// the form, the summary and the code panel have fixed heights and the table
+// takes what is left, so a short window left it nothing: 0 px on a 390×844
+// phone. The host makes the canvas at least this tall and lets the page
+// scroll.
+//
+// It is measured, not computed: in the stacked layout the table is the only
+// part that grows, so the layout is laid out once at a tall height and the
+// table's share is replaced by minTableH. Formula and layout cannot drift.
+func (s *State) MinHeight(w int) int {
+	if w >= toolkit.Scaled(narrowW) {
+		return 0
+	}
+	ow, oh := s.w, s.h
+	const tall = 1 << 15
+	s.w, s.h = max(w, 1), tall
+	s.layout()
+	need := tall - s.table.Bounds().H + toolkit.Scaled(minTableH)
+	s.w, s.h = ow, oh
+	s.layout()
+	return need
 }
 
 // Size is the scene size in device pixels.

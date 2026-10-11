@@ -52,11 +52,22 @@ async function run(scheme, dpr, vp = DESKTOP) {
     const shot = (what) => path.join(captureDir, what + "-" + scheme + "-" + dpr + "x" + (vp.name ? "-" + vp.name : "") + ".png");
 
     const debug = async () => JSON.parse(await page.evaluate(() => ndarrayDebug()));
-    const canvasBox = await page.evaluate(() => { const r = document.getElementById("nd-canvas").getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    const boxOf = async () => page.evaluate(() => { const r = document.getElementById("nd-canvas").getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    let canvasBox = await boxOf();
+    // On a phone the canvas is taller than the window and the stage scrolls
+    // (State.MinHeight): scroll a widget into view before clicking it, as a
+    // visitor would, then re-read where the canvas now is.
+    const reveal = async (r) => {
+      await page.evaluate((y, h) => {
+        const s = document.querySelector(".stage");
+        if (y < s.scrollTop || y + h > s.scrollTop + s.clientHeight) s.scrollTop = Math.max(0, y + h / 2 - s.clientHeight / 2);
+      }, r.y, r.h);
+      canvasBox = await boxOf();
+    };
     const rects = async () => JSON.parse(await page.evaluate(() => ndarrayRects()));
     const center = (r) => [canvasBox.x + r.x + r.w / 2, canvasBox.y + r.y + r.h / 2];
     const clickAt = async (x, y) => { await page.mouse.click(x, y); await new Promise((r) => setTimeout(r, 60)); };
-    const click = async (name) => { const r = (await rects())[name]; const [x, y] = center(r); await clickAt(x, y); };
+    const click = async (name) => { const r = (await rects())[name]; await reveal(r); const [x, y] = center(r); await clickAt(x, y); };
     // Pixels of the canvas inside a CSS rectangle (relative to the canvas).
     const pixels = async (r) => page.evaluate((r, dpr) => {
       const c = document.getElementById("nd-canvas");
@@ -74,6 +85,7 @@ async function run(scheme, dpr, vp = DESKTOP) {
       check(tag + "option " + option + " exists in " + dd, idx >= 0, list.join(","));
       await click(dd);
       const pop = (await rects())[dd + "Popover"];
+      await reveal(pop);
       const visible = Math.min(list.length, 12);
       const rowH = pop.h / visible;
       // The popover keeps its scroll between openings: wheel it back to the
@@ -137,6 +149,7 @@ async function run(scheme, dpr, vp = DESKTOP) {
 
     // 2. Click a step of the pipeline: b, the reshaped view.
     const st = (await rects()).steps;
+    await reveal(st);
     // Probe down the list until the click lands on row b (index 1): the test
     // does not assume the list's row height.
     for (let y = st.y + 4; y < st.y + st.h; y += 4) {
@@ -176,6 +189,7 @@ async function run(scheme, dpr, vp = DESKTOP) {
     // 5. The code panel: Go program, then the NumPy equivalent.
     check(tag + "the Go program is shown", d.code.startsWith("package main") && d.code.includes("ndarray.Arange(0, 6, 1)"), d.code.slice(0, 40));
     const lang = (await rects()).lang;
+    await reveal(lang);
     await clickAt(canvasBox.x + lang.x + lang.w * 0.75, canvasBox.y + lang.y + lang.h / 2);
     d = await debug();
     check(tag + "the NumPy tab shows NumPy", d.code.startsWith("import numpy as np") && d.code.includes("b.T"), d.code.slice(0, 40));
