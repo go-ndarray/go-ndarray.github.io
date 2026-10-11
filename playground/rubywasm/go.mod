@@ -80,10 +80,10 @@ require (
 	github.com/go-crdt/collab v0.74.0 // indirect
 	github.com/go-crdt/crdt v0.55.0 // indirect
 	github.com/go-datetime/dates v0.1.0 // indirect
-	github.com/go-embedded-ruby/ruby v0.3.0 // indirect
+	github.com/go-embedded-ruby/ruby v0.5.0 // indirect
 	github.com/go-encryptions/unixcrypt v0.1.0 // indirect
 	github.com/go-facter/facter v0.0.0-20260830120958-454b72e642ab // indirect
-	github.com/go-fft/fft v0.1.14 // indirect
+	github.com/go-fft/fft v0.23.0 // indirect
 	github.com/go-gfx/gfx v0.34.0 // indirect
 	github.com/go-hiera/hiera v0.0.0-20260830144306-f9304f6bec92 // indirect
 	github.com/go-hocon/hocon v0.0.0-20260831114632-08e716b40e6d // indirect
@@ -100,7 +100,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-mustache/mustache v0.1.0 // indirect
-	github.com/go-ndarray/ndarray v0.3.0 // indirect
+	github.com/go-ndarray/ndarray v0.11.0 // indirect
 	github.com/go-nokogiri/nokogiri v0.1.0 // indirect
 	github.com/go-opentype/fonts v0.10.0 // indirect
 	github.com/go-opentype/opentype v0.13.0 // indirect
@@ -388,7 +388,7 @@ require (
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/image v0.46.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/term v0.46.0 // indirect

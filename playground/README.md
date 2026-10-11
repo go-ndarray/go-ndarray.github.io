@@ -95,7 +95,7 @@ GOOS=js GOARCH=wasm go build -trimpath -ldflags="-s -w" \
   -o ../../static/playground/rbgo.wasm github.com/go-embedded-ruby/ruby/cmd/wasm
 ```
 
-It is far larger than the playground (about 99 MB, 21 MB gzipped), so the page
+It is far larger than the playground (about 100 MB, 21 MB gzipped), so the page
 never loads it up front: the first time the visitor opens the Ruby tab, the
 ViewModel asks the host, the page's `ndarrayRubyLoad` fetches it with a
 progress line and bar counting the bytes, and starts it in its own Go runtime
