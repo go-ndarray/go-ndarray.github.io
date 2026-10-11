@@ -22,13 +22,13 @@ disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
     path = "github.com/go-fleettools/landingkit"
 
 [params]
-  description = "go-ndarray is a pure-Go (CGO=0) NumPy-style n-dimensional array library for float64 — slicing/views, broadcasting, ufuncs, reductions and linear algebra, multicore + SIMD on amd64, arm64, ppc64le, loong64, riscv64 and s390x, with a Workspace arena for loops."
+  description = "go-ndarray is a pure-Go (CGO=0) NumPy-style n-dimensional array library in 13 dtypes — slicing/views, broadcasting, ufuncs, reductions, numpy.linalg, numpy.fft and numpy.random (NumPy's numbers for the same seed), multicore + SIMD on amd64, arm64, ppc64le, loong64, riscv64 and s390x, with a Workspace arena for loops."
 
 [[params.repos]]
   name  = "ndarray"
-  kind  = "library · v0.9.1"
+  kind  = "library · v0.11.0"
   href  = "https://github.com/go-ndarray/ndarray"
-  blurb = "The library. Creation (<code>Zeros</code>/<code>Arange</code>/<code>Linspace</code>/…), strided <strong>views</strong>, broadcasting elementwise + ufuncs, reductions (<code>Sum</code>/<code>Max</code>/<code>ArgMax</code>/<code>CumSum</code>/<code>Clip</code>/<code>Where</code>), manipulation (<code>Reshape</code>/<code>Concatenate</code>/<code>Stack</code>), linalg (<code>MatMul</code>/<code>Dot</code>) via a panel-packed cache-blocked GEMM with a go-asmgen SIMD-FMA micro-kernel (NEON 4&times;8 on arm64, AVX2/FMA 6&times;8 on amd64, VSX 8&times;8 on ppc64le, LASX 8&times;8 on loong64, RVV 6&times;8 on riscv64, 4&times;8 on s390x), and a <code>Workspace</code> arena for loops (<code>Use</code>/<code>Reset</code>/<code>Detach</code>)."
+  blurb = "The library, in <strong>13 dtypes</strong> with NumPy 2 promotion. Creation (<code>Zeros</code>/<code>Arange</code>/<code>Linspace</code>/…), strided <strong>views</strong>, broadcasting elementwise + ufuncs, reductions (<code>Sum</code>/<code>Max</code>/<code>ArgMax</code>/<code>CumSum</code>/<code>Clip</code>/<code>Where</code>), manipulation (<code>Reshape</code>/<code>Concatenate</code>/<code>Stack</code>), linalg (<code>MatMul</code>/<code>Dot</code>) via a panel-packed cache-blocked GEMM with a go-asmgen SIMD-FMA micro-kernel (NEON 4&times;8 on arm64, AVX2/FMA 6&times;8 on amd64, VSX 8&times;8 on ppc64le, LASX 8&times;8 on loong64, RVV 6&times;8 on riscv64, 4&times;8 on s390x), and a <code>Workspace</code> arena for loops (<code>Use</code>/<code>Reset</code>/<code>Detach</code>). Packages <code>linalg</code>, <code>fft</code> and <code>random</code> are <code>numpy.linalg</code>, <code>numpy.fft</code> and <code>numpy.random</code>."
 [[params.repos]]
   name  = "docs"
   kind  = "site"
@@ -62,8 +62,11 @@ disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
 # The API cards (#api) and the count in the hero come from this list, never
 # from a number typed beside it.
 [[params.families]]
+  name = "Dtypes"
+  what = "bool, int8…int64, uint8…uint64, float32/float64, complex64/complex128, chosen at run time with NumPy 2 promotion: `AsType`, `Data[T]`, `Item[T]`, weak Go scalars with `Scalar`."
+[[params.families]]
   name = "Creation"
-  what = "`Zeros`, `Ones`, `Full`, `Arange`, `Linspace`, `FromData`, `Eye` and the rest of NumPy's constructors, float64 throughout."
+  what = "`Zeros`, `Ones`, `Full`, `Arange`, `Linspace`, `FromData`, `Eye` and the rest of NumPy's constructors, in any dtype (`ZerosOf`, `FromSlice`)."
 [[params.families]]
   name = "Views and indexing"
   what = "`Reshape`, `Transpose` and NumPy basic indexing with `Slice(All(), A(0), …)`: strided views that share data, no copy."
@@ -78,7 +81,16 @@ disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
   what = "`Concatenate`, `Stack` and the shape operations NumPy users reach for."
 [[params.families]]
   name = "Linear algebra"
-  what = "`MatMul` and `Dot` through a panel-packed, cache-blocked GEMM with a go-asmgen SIMD micro-kernel per architecture."
+  what = "`MatMul` and `Dot` through a panel-packed, cache-blocked GEMM with a go-asmgen SIMD micro-kernel per architecture; package `linalg` is `numpy.linalg` (`Solve`, `Inv`, `Det`, `QR`, `SVD`, `Eig`, `Lstsq`, …), checked against numpy 2.5.3 on 1,040 cases."
+[[params.families]]
+  name = "Fourier transforms"
+  what = "Package `fft` is `numpy.fft` on arrays: `FFT`, `RFFT`, `FFT2`, `FFTN` and the rest, with `n`/`s`, `axes` and `norm`, over go-fft."
+[[params.families]]
+  name = "Random numbers"
+  what = "Package `random` is `numpy.random` with NumPy's numbers for the same seed: PCG64, MT19937, Philox, SFC64, 40 samplers, and the legacy `RandomState`."
+[[params.families]]
+  name = "Notebooks and storage"
+  what = "`Repr` prints like NumPy, `Display` gives a notebook text and HTML, and `MarshalBinary` writes the same bytes on every architecture."
 [[params.families]]
   name = "Workspace"
   what = "An arena for loops: `Use`, `Reset`, `Detach` — results stop costing the garbage collector from one pass to the next."
