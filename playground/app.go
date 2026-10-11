@@ -79,11 +79,18 @@ type State struct {
 	timing  *toolkit.Label
 	goLine  *toolkit.Label
 	pyLine  *toolkit.Label
+	rbLine  *toolkit.Label
 	note    *toolkit.Label
 	table   *toolkit.Table
 	lang    *toolkit.ViewSwitcher
+	runB    *toolkit.Button
 	copyB   *toolkit.Button
 	code    *toolkit.TextView
+
+	// the Ruby tab: the download, then what the program printed
+	rbStatus *toolkit.Label
+	rbBar    *toolkit.ProgressBar
+	rbOut    *toolkit.TextView
 
 	status *toolkit.Label
 
@@ -92,6 +99,7 @@ type State struct {
 	root, left, right *toolkit.VBox
 	body              toolkit.Widget // an HBox, or a VBox when narrow
 	formBtns, codeBar *toolkit.HBox
+	codeArea          toolkit.Widget // the code, or on the Ruby tab the code and its output
 	top               toolkit.Widget // an HBox, or a VBox (title above the presets) when narrow
 
 	dropdowns []*toolkit.DropDown
@@ -148,16 +156,21 @@ func NewState(w, h int, dark bool) *State {
 	s.timing = toolkit.NewLabel("")
 	s.goLine = toolkit.NewLabel("")
 	s.pyLine = toolkit.NewLabel("")
+	s.rbLine = toolkit.NewLabel("")
 	s.note = toolkit.NewLabel("")
 	s.table = toolkit.NewTable(nil, nil)
-	s.lang = toolkit.NewViewSwitcher([]string{"Go program", "NumPy equivalent"}, 0)
+	s.lang = toolkit.NewViewSwitcher([]string{"Go", "Ruby", "NumPy"}, 0)
+	s.runB = toolkit.NewButton("Run", nil)
 	s.copyB = toolkit.NewButton("Copy", nil)
 	s.code = toolkit.NewTextView("")
 	s.code.ShowLineNumbers = true
+	s.rbStatus = toolkit.NewLabel("")
+	s.rbBar = toolkit.NewProgressBar()
+	s.rbOut = toolkit.NewTextView("")
 
 	s.status = toolkit.NewLabel("")
 
-	for _, l := range []*toolkit.Label{s.hint, s.errLabel, s.memory, s.shape, s.timing, s.goLine, s.pyLine, s.note, s.status} {
+	for _, l := range []*toolkit.Label{s.hint, s.errLabel, s.memory, s.shape, s.timing, s.goLine, s.rbLine, s.pyLine, s.note, s.status, s.rbStatus} {
 		l.Ellipsis = true
 	}
 
@@ -166,6 +179,7 @@ func NewState(w, h int, dark bool) *State {
 	s.apply.Style = toolkit.ButtonProminent
 	s.undo.Style = toolkit.ButtonSecondary
 	s.reset.Style = toolkit.ButtonSecondary
+	s.runB.Style = toolkit.ButtonProminent
 	s.copyB.Style = toolkit.ButtonSecondary
 	s.args.Placeholder = "arguments"
 	s.args.OnSubmit = func(string) { v.Apply.Execute() }
@@ -188,12 +202,19 @@ func NewState(w, h int, dark bool) *State {
 		mvvmtk.BindLabel(s.memory, v.Memory, inv),
 		mvvmtk.BindLabel(s.timing, v.Timing, inv),
 		mvvmtk.BindLabel(s.goLine, v.GoLine, inv),
+		mvvmtk.BindLabel(s.rbLine, v.RbLine, inv),
 		mvvmtk.BindLabel(s.pyLine, v.PyLine, inv),
 		mvvmtk.BindLabel(s.note, v.Note, inv),
 		bindGrid(s.table, v.Grid, inv),
 		mvvmtk.BindViewSwitcher(s.lang, v.CodeLang, inv),
 		mvvmtk.BindCommand(s.copyB, v.CopyCode, inv),
 		mvvmtk.BindTextView(s.code, v.Code, inv),
+		mvvmtk.BindCommand(s.runB, v.RunRuby, inv),
+		mvvmtk.BindLabel(s.rbStatus, v.RubyStatus, inv),
+		mvvmtk.BindProgress(s.rbBar, v.RubyProgress, inv),
+		mvvmtk.BindTextView(s.rbOut, v.RubyOutput, inv),
+		// The Ruby tab lays the code panel out differently: Run, and the output.
+		v.CodeLang.SubscribeChanged(s.layout),
 		mvvmtk.BindLabel(s.status, v.Status, inv),
 	)
 	s.dropdowns = []*toolkit.DropDown{s.presets, s.ops, s.inputs}
@@ -243,9 +264,35 @@ func (s *State) layout() {
 	s.left.AddFixed(s.formBtns, sc(rowH+2))
 	s.left.AddFixed(s.errLabel, sc(labelH))
 
+	ruby := s.VM.CodeLang.Get() == vm.LangRuby
 	s.codeBar = hbox(sc(gap))
 	s.codeBar.AddFlex(s.lang, 1)
+	if ruby {
+		s.codeBar.AddFixed(s.runB, sc(70))
+	}
 	s.codeBar.AddFixed(s.copyB, sc(90))
+
+	// The Ruby tab shows the program beside what it printed (below it when
+	// narrow), under a line that follows the download and the run.
+	s.codeArea = s.code
+	codeAreaH := sc(codeH)
+	if ruby {
+		out := vbox(sc(4))
+		out.AddFixed(s.rbStatus, sc(labelH))
+		out.AddFixed(s.rbBar, sc(6))
+		out.AddFlex(s.rbOut, 1)
+		if narrow {
+			area := vbox(sc(gap))
+			area.AddFixed(s.code, sc(codeH))
+			area.AddFlex(out, 1)
+			s.codeArea, codeAreaH = area, sc(2*codeH)
+		} else {
+			area := hbox(sc(gap))
+			area.AddFlex(s.code, 3)
+			area.AddFlex(out, 2)
+			s.codeArea = area
+		}
+	}
 
 	s.right = vbox(sc(2))
 	s.right.AddFixed(s.stTitle, sc(labelH+4))
@@ -253,11 +300,12 @@ func (s *State) layout() {
 	s.right.AddFixed(s.memory, sc(labelH))
 	s.right.AddFixed(s.timing, sc(labelH))
 	s.right.AddFixed(s.goLine, sc(labelH))
+	s.right.AddFixed(s.rbLine, sc(labelH))
 	s.right.AddFixed(s.pyLine, sc(labelH))
 	s.right.AddFixed(s.note, sc(labelH))
 	s.right.AddFlex(s.table, 1)
 	s.right.AddFixed(s.codeBar, sc(rowH+2))
-	s.right.AddFixed(s.code, sc(codeH))
+	s.right.AddFixed(s.codeArea, codeAreaH)
 
 	if narrow {
 		b := vbox(sc(gap * 2))
@@ -333,7 +381,7 @@ func (s *State) applyTheme() {
 	s.title.Ink = brandText(s.dark)
 	s.title.FontSize = toolkit.Scaled(19)
 	s.stTitle.Ink = brandText(s.dark)
-	for _, l := range []*toolkit.Label{s.hint, s.memory, s.timing, s.note, s.status, s.pipeLbl, s.opLbl, s.inLbl} {
+	for _, l := range []*toolkit.Label{s.hint, s.memory, s.timing, s.note, s.status, s.pipeLbl, s.opLbl, s.inLbl, s.rbStatus} {
 		l.Ink = muted
 	}
 	s.errLabel.Ink = errorInk(s.dark)

@@ -17,6 +17,10 @@
 //	ndarrayDebug()                a JSON snapshot of the scene, for tests
 //	ndarrayRects()                the widgets' rectangles in CSS pixels, for tests
 //
+// and it calls two functions of the page's: ndarrayRubyLoad(onProgress), a
+// Promise that downloads and starts go-embedded-ruby, and rbgoEval(src), which
+// that module publishes, through the page's guard ndarrayRubyEval(src).
+//
 // The page owns the theme: the landing's own System/Light/Dark toggle sits in
 // its nav bar, and a change of data-theme reaches the canvas through
 // ndarraySetTheme.
@@ -176,6 +180,9 @@ func main() {
 		render()
 	}
 	js.Global().Call("addEventListener", "resize", js.FuncOf(func(js.Value, []js.Value) any { refit(); return nil }))
+	// The Ruby tab adds the output panel: when stacked (a phone) the scene needs
+	// more height, so the canvas is refitted whenever the tab changes.
+	state.VM.CodeLang.SubscribeChanged(refit)
 
 	js.Global().Set("ndarraySetTheme", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		if len(args) > 0 {
@@ -199,6 +206,46 @@ func main() {
 		b, _ := json.Marshal(out)
 		return string(b)
 	}))
+
+	// Ruby: the page downloads go-embedded-ruby (a second Go wasm module, in
+	// its own Go runtime) only when the ViewModel asks, i.e. when the visitor
+	// opens the Ruby tab; it then calls rbgoEval synchronously.
+	state.VM.RubyLoad = func(progress func(got, total int64), done func(err string)) {
+		load := js.Global().Get("ndarrayRubyLoad")
+		if load.Type() != js.TypeFunction {
+			done("this page has no Ruby loader")
+			return
+		}
+		var onProgress, onOK, onErr js.Func
+		onProgress = js.FuncOf(func(_ js.Value, a []js.Value) any {
+			progress(int64(a[0].Float()), int64(a[1].Float()))
+			render()
+			return nil
+		})
+		finish := func(err string) {
+			onProgress.Release()
+			onOK.Release()
+			onErr.Release()
+			done(err)
+			render()
+		}
+		onOK = js.FuncOf(func(js.Value, []js.Value) any { finish(""); return nil })
+		onErr = js.FuncOf(func(_ js.Value, a []js.Value) any { finish(a[0].Call("toString").String()); return nil })
+		load.Invoke(onProgress).Call("then", onOK, onErr)
+	}
+	state.VM.RubyEval = func(src string) (string, string) {
+		r := js.Global().Call("ndarrayRubyEval", src)
+		out, errText := r.Get("output"), r.Get("error")
+		s := ""
+		if out.Type() == js.TypeString {
+			s = out.String()
+		}
+		e := ""
+		if errText.Type() == js.TypeString {
+			e = errText.String()
+		}
+		return s, e
+	}
 
 	refit() // a narrow window may need a taller canvas than the stage
 	render()

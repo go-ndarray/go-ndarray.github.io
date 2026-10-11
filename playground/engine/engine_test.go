@@ -116,11 +116,11 @@ func TestSqueezeAxes(t *testing.T) {
 	s := &Session{}
 	mustApply(t, s, "Zeros", "", "1, 3, 1")
 	st := mustApply(t, s, "Squeeze", "a", "0")
-	if st.Py != "b = np.squeeze(a, axis=0)" || ShapeText(st.Layout.Shape) != "(3, 1)" {
+	if st.Rb != "b = a.squeeze(0)" || st.Py != "b = np.squeeze(a, axis=0)" || ShapeText(st.Layout.Shape) != "(3, 1)" {
 		t.Errorf("Squeeze(0): %q %v", st.Py, st.Layout.Shape)
 	}
 	st = mustApply(t, s, "Squeeze", "a", "0, 2")
-	if st.Py != "c = np.squeeze(a, axis=(0, 2))" || ShapeText(st.Layout.Shape) != "(3,)" {
+	if st.Rb != "c = a.squeeze(0, 2)" || st.Py != "c = np.squeeze(a, axis=(0, 2))" || ShapeText(st.Layout.Shape) != "(3,)" {
 		t.Errorf("Squeeze(0, 2): %q %v", st.Py, st.Layout.Shape)
 	}
 }

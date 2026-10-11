@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Playground — {{ .Site.Title }}</title>
-<meta name="description" content="Try go-ndarray in your browser: create arrays, apply views, broadcasting, ufuncs, reductions and linear algebra step by step, and see shapes, strides, values, timings and the equivalent Go and NumPy code. go-ndarray itself, compiled to WebAssembly.">
+<meta name="description" content="Try go-ndarray in your browser: create arrays, apply views, broadcasting, ufuncs, reductions and linear algebra step by step, and see shapes, strides, values, timings and the equivalent Go, Ruby and NumPy code, the Ruby program running in your browser on go-embedded-ruby. go-ndarray itself, compiled to WebAssembly.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 {{ partial "styles.html" . }}
 <style>
@@ -51,15 +51,18 @@
   </div>
   <noscript><p style="padding:16px">The playground runs go-ndarray compiled to WebAssembly and needs JavaScript to start it.</p></noscript>
 
-{{/* Both files are build artifacts: the pages workflow compiles the wasm from
-     playground/ and copies wasm_exec.js from the SAME Go toolchain, so the two
-     always match. Neither is committed. ?v= is the deployed commit, so a new
+{{/* The three files are build artifacts: the pages workflow compiles the wasm
+     from playground/, the Ruby wasm (go-embedded-ruby, pinned in
+     playground/rubywasm/go.mod) with the SAME Go toolchain, and copies that
+     toolchain's wasm_exec.js, which both modules use: they match. Neither is committed. ?v= is the deployed commit, so a new
      deploy is a new URL and a cached copy can only be the bytes it names. */}}
 {{ $sha := .Site.Params.wasmsha }}
 {{ $wasm := "/playground/playground.wasm" }}
 {{ $exec := "/playground/wasm_exec.js" }}
-{{ with $sha }}{{ $wasm = printf "%s?v=%s" $wasm . }}{{ $exec = printf "%s?v=%s" $exec . }}{{ end }}
+{{ $rbwasm := "/playground/rbgo.wasm" }}
+{{ with $sha }}{{ $wasm = printf "%s?v=%s" $wasm . }}{{ $exec = printf "%s?v=%s" $exec . }}{{ $rbwasm = printf "%s?v=%s" $rbwasm . }}{{ end }}
 {{ $bytes := 0 }}{{ with (os.Stat "static/playground/playground.wasm") }}{{ $bytes = .Size }}{{ end }}
+{{ $rbbytes := 0 }}{{ with (os.Stat "static/playground/rbgo.wasm") }}{{ $rbbytes = .Size }}{{ end }}
 <script>
   /* Go's wasm runtime reads globalThis.fs/process/path; an element id of the
      same name would shadow them and kill the runtime at init. None here. */
@@ -74,6 +77,11 @@
   // so Content-Length is the compressed size while the reader below counts
   // decompressed bytes. 0 when the wasm was not built (a bare `hugo server`).
   var wasmBytes={{ $bytes }};
+  // go-embedded-ruby, the Ruby tab's interpreter: several times the playground's
+  // size, so it is fetched only when the app asks (the visitor opens the
+  // Ruby tab), never with the page.
+  var rubyURL={{ $rbwasm }};
+  var rubyBytes={{ $rbbytes }};
 
   function isDark(){
     var t=document.documentElement.getAttribute("data-theme");
@@ -87,6 +95,7 @@
   new MutationObserver(syncTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
   if(window.matchMedia){ try{ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",syncTheme); }catch(e){} }
 
+  function pageProgress(got,total){ progress(total?got/total:null); }
   function progress(f){
     var fill=$("pg-fill"), pct=$("pg-pct");
     if(f==null){ fill.style.width="100%"; fill.style.opacity=".45"; pct.textContent="…"; return; }
@@ -99,10 +108,10 @@
     err.textContent=String(e)+(location.protocol==="file:"?"\n(serve the page over HTTP: a page opened from a file cannot fetch the wasm)":"\n(a hard refresh may help if a stale copy is cached)");
     err.classList.add("show");
   }
-  function fetchWasm(url){
+  function fetchWasm(url,known,progress){
     return fetch(url).then(function(r){
       if(!r.ok) throw new Error("HTTP "+r.status+" fetching "+url);
-      var total=wasmBytes||parseInt(r.headers.get("Content-Length")||"0",10)||0;
+      var total=known||parseInt(r.headers.get("Content-Length")||"0",10)||0;
       if(!r.body||!r.body.getReader) return r.arrayBuffer();
       var reader=r.body.getReader(), got=0, chunks=[];
       return (function pump(){
@@ -113,16 +122,50 @@
             return buf.buffer;
           }
           chunks.push(res.value); got+=res.value.length;
-          progress(total?got/total:null);
+          progress(got,total);
           return pump();
         });
       })();
     });
   }
+  // ndarrayRubyLoad(onProgress) downloads go-embedded-ruby and starts it in a
+  // Go runtime of its own (a second `new Go()`: wasm_exec.js keeps each
+  // instance's state on the instance), resolving once it has published
+  // rbgoEval. onProgress(got, total) follows the download in bytes. One
+  // download serves every call; a failed one may be retried.
+  var rubyLoading=null;
+  globalThis.ndarrayRubyLoad=function(onProgress){
+    if(rubyLoading) return rubyLoading;
+    rubyLoading=fetchWasm(rubyURL,rubyBytes,function(got,total){ if(onProgress) onProgress(got,total); }).then(function(ab){
+      var go=new Go();
+      return WebAssembly.instantiate(ab,go.importObject).then(function(res){
+        go.run(res.instance);
+        return new Promise(function(resolve,reject){
+          var waited=0, t=setInterval(function(){
+            if(typeof globalThis.rbgoEval==="function"&&globalThis.rbgoReady){ clearInterval(t); resolve(); }
+            else if((waited+=20)>60000){ clearInterval(t); reject(new Error("go-embedded-ruby did not start")); }
+          },20);
+        });
+      });
+    });
+    rubyLoading.catch(function(){ rubyLoading=null; });
+    return rubyLoading;
+  };
+  // rbgoEval, guarded: a Go panic in the interpreter ends its runtime, and a
+  // call into a stopped runtime throws. Report that as the run's error rather
+  // than throwing into the playground's own runtime.
+  globalThis.ndarrayRubyEval=function(src){
+    try{
+      var r=globalThis.rbgoEval(src);
+      return r||{output:"",error:"go-embedded-ruby returned nothing"};
+    }catch(e){
+      return {output:"",error:"go-embedded-ruby stopped ("+String(e)+"): reload the page to restart it"};
+    }
+  };
   function start(){
     if(typeof Go!=="function"){ fail("wasm_exec.js did not load"); return; }
     var go=new Go();
-    fetchWasm(wasmURL).then(function(ab){
+    fetchWasm(wasmURL,wasmBytes,pageProgress).then(function(ab){
       progress(1);
       $("pg-msg").textContent="Starting…";
       return WebAssembly.instantiate(ab,go.importObject);

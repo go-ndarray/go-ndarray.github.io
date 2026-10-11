@@ -5,6 +5,7 @@ package engine
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -140,4 +141,37 @@ func StepName(i int) string {
 		return letter
 	}
 	return letter + strconv.Itoa(i/26)
+}
+
+// rbFloat writes a number as a Ruby literal: formatFloat's spelling, which
+// Ruby reads too ("0.5", "1e+06", "-3"), except for the non-finite values.
+func rbFloat(v float64) string {
+	switch {
+	case math.IsNaN(v):
+		return "Float::NAN"
+	case math.IsInf(v, 1):
+		return "Float::INFINITY"
+	case math.IsInf(v, -1):
+		return "-Float::INFINITY"
+	}
+	return formatFloat(v)
+}
+
+// rbArgs writes numbers as a Ruby argument list: "0, 0.5, 3".
+func rbArgs(v ...float64) string {
+	s := make([]string, len(v))
+	for i, x := range v {
+		s[i] = rbFloat(x)
+	}
+	return strings.Join(s, ", ")
+}
+
+// rbParens wraps a non-empty Ruby argument list in parentheses; an empty one
+// is no parentheses at all, the Ruby way of calling a method without
+// arguments.
+func rbParens(args string) string {
+	if args == "" {
+		return ""
+	}
+	return "(" + args + ")"
 }

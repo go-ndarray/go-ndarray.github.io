@@ -56,13 +56,14 @@ type call struct {
 }
 
 // plan is a built operation: the computation, ready to run (and re-run, for
-// timing), and the Go and NumPy spellings of it.
+// timing), and the Go, NumPy and Ruby spellings of it.
 type plan struct {
 	run    func() (*ndarray.Array, error)
 	scalar bool   // the Go call returns a float64 or an int, not an *Array
 	goRHS  string // the Go expression
 	goErr  bool   // the Go expression also returns an error
 	py     string // the NumPy expression
+	rb     string // the Ruby expression (go-embedded-ruby's NDArray)
 }
 
 // Ops is the catalog, in menu order.
@@ -76,10 +77,10 @@ var Ops = []Op{
 	{Name: "FromData", Kind: KindCreate, Hint: "[values], shape…", Default: "[1, 2, 3, 4, 5, 6], 2, 3", build: buildFromData},
 
 	{Name: "Reshape", Kind: KindUnary, Hint: "new shape, -1 is inferred", Default: "3, -1", build: buildReshape},
-	{Name: "Transpose", Kind: KindUnary, Hint: "(no arguments)", build: buildMethod("Transpose", ".T")},
+	{Name: "Transpose", Kind: KindUnary, Hint: "(no arguments)", build: buildMethod("Transpose", ".T", ".transpose")},
 	{Name: "Slice", Kind: KindUnary, Hint: "NumPy indices: 1:3, ::2, 0, -1, :", Default: ":, 1:", build: buildSlice},
-	{Name: "Flatten", Kind: KindUnary, Hint: "(no arguments)", build: buildMethod("Flatten", ".flatten()")},
-	{Name: "Copy", Kind: KindUnary, Hint: "(no arguments)", build: buildMethod("Copy", ".copy()")},
+	{Name: "Flatten", Kind: KindUnary, Hint: "(no arguments)", build: buildMethod("Flatten", ".flatten()", ".flatten")},
+	{Name: "Copy", Kind: KindUnary, Hint: "(no arguments)", build: buildMethod("Copy", ".copy()", ".dup")},
 	{Name: "Squeeze", Kind: KindUnary, Hint: "axes to drop (none = every length-1 axis)", build: buildSqueeze},
 	{Name: "ExpandDims", Kind: KindUnary, Hint: "axis", Default: "0", build: buildExpandDims},
 
@@ -104,10 +105,10 @@ var Ops = []Op{
 	{Name: "Sub", Kind: KindBinary, Hint: "a step name, or a number", Default: "1", build: buildArith("Sub", "-")},
 	{Name: "Mul", Kind: KindBinary, Hint: "a step name, or a number", Default: "2", build: buildArith("Mul", "*")},
 	{Name: "Div", Kind: KindBinary, Hint: "a step name, or a number", Default: "2", build: buildArith("Div", "/")},
-	{Name: "Maximum", Kind: KindBinary, Hint: "a step name", build: buildArrayBinary("Maximum", "np.maximum(%s, %s)")},
-	{Name: "Minimum", Kind: KindBinary, Hint: "a step name", build: buildArrayBinary("Minimum", "np.minimum(%s, %s)")},
-	{Name: "MatMul", Kind: KindBinary, Hint: "a step name", build: buildArrayBinary("MatMul", "%s @ %s")},
-	{Name: "Dot", Kind: KindBinary, Hint: "a step name", build: buildArrayBinary("Dot", "np.dot(%s, %s)")},
+	{Name: "Maximum", Kind: KindBinary, Hint: "a step name", build: buildArrayBinary("Maximum", "np.maximum(%s, %s)", "NDArray.maximum(%s, %s)")},
+	{Name: "Minimum", Kind: KindBinary, Hint: "a step name", build: buildArrayBinary("Minimum", "np.minimum(%s, %s)", "NDArray.minimum(%s, %s)")},
+	{Name: "MatMul", Kind: KindBinary, Hint: "a step name", build: buildArrayBinary("MatMul", "%s @ %s", "%s.matmul(%s)")},
+	{Name: "Dot", Kind: KindBinary, Hint: "a step name", build: buildArrayBinary("Dot", "np.dot(%s, %s)", "%s.dot(%s)")},
 	{Name: "Outer", Kind: KindBinary, Hint: "a step name", build: buildOuter},
 
 	{Name: "Concatenate", Kind: KindJoin, Hint: "other steps…, axis", build: buildJoin("Concatenate", "concatenate")},
@@ -182,6 +183,7 @@ func buildArange(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return ndarray.Arange(v[0], v[1], v[2]) },
 		goRHS: "ndarray.Arange(" + args + ")", goErr: true,
 		py: "np.arange(" + args + ")",
+		rb: "NDArray.arange(" + rbArgs(v[:]...) + ")",
 	}, nil
 }
 
@@ -209,6 +211,7 @@ func buildLinspace(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return ndarray.Linspace(start, stop, num) },
 		goRHS: "ndarray.Linspace(" + args + ")", goErr: true,
 		py: "np.linspace(" + args + ")",
+		rb: "NDArray.linspace(" + rbFloat(start) + ", " + rbFloat(stop) + ", " + strconv.Itoa(num) + ")",
 	}, nil
 }
 
@@ -229,6 +232,7 @@ func buildFilled(goName, pyName string) func(c call) (plan, error) {
 			run:   func() (*ndarray.Array, error) { return f(shape...) },
 			goRHS: "ndarray." + goName + "(" + joinInts(shape) + ")", goErr: true,
 			py: "np." + pyName + "(" + pyTuple(shape) + ")",
+			rb: "NDArray." + pyName + "(" + joinInts(shape) + ")",
 		}, nil
 	}
 }
@@ -256,10 +260,15 @@ func buildFull(c call) (plan, error) {
 	if len(shape) == 0 {
 		py = "np.full((), " + formatFloat(v) + ")"
 	}
+	rbFull := rbFloat(v)
+	if len(shape) > 0 {
+		rbFull += ", " + joinInts(shape)
+	}
 	return plan{
 		run:   func() (*ndarray.Array, error) { return ndarray.Full(v, shape...) },
 		goRHS: "ndarray.Full(" + goArgs + ")", goErr: true,
 		py: py,
+		rb: "NDArray.full(" + rbFull + ")",
 	}, nil
 }
 
@@ -278,6 +287,7 @@ func buildEye(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return ndarray.Eye(v[0], v[1], v[2]) },
 		goRHS: "ndarray.Eye(" + joinInts(v) + ")", goErr: true,
 		py: "np.eye(" + joinInts(v) + ")",
+		rb: "NDArray.eye(" + joinInts(v) + ")",
 	}, nil
 }
 
@@ -301,6 +311,7 @@ func buildFromData(c call) (plan, error) {
 		vals[i] = formatFloat(v)
 	}
 	list := strings.Join(vals, ", ")
+	rb := "NDArray.from([" + rbArgs(data...) + "], [" + joinInts(shape) + "])"
 	py := "np.array([" + list + "])"
 	if len(shape) != 1 || shape[0] != len(data) {
 		py += ".reshape(" + joinInts(shape) + ")"
@@ -313,6 +324,7 @@ func buildFromData(c call) (plan, error) {
 		},
 		goRHS: "ndarray.FromData([]float64{" + list + "}, " + joinInts(shape) + ")", goErr: true,
 		py: py,
+		rb: rb,
 	}, nil
 }
 
@@ -331,11 +343,12 @@ func buildReshape(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return in.Reshape(shape...) },
 		goRHS: c.inName + ".Reshape(" + joinInts(shape) + ")", goErr: true,
 		py: c.inName + ".reshape(" + joinInts(shape) + ")",
+		rb: c.inName + ".reshape(" + joinInts(shape) + ")",
 	}, nil
 }
 
 // buildMethod is an argument-less method returning *Array and no error.
-func buildMethod(goName, pySuffix string) func(c call) (plan, error) {
+func buildMethod(goName, pySuffix, rbSuffix string) func(c call) (plan, error) {
 	return func(c call) (plan, error) {
 		if err := noArgs(goName, c); err != nil {
 			return plan{}, err
@@ -354,25 +367,32 @@ func buildMethod(goName, pySuffix string) func(c call) (plan, error) {
 			run:   func() (*ndarray.Array, error) { return f(), nil },
 			goRHS: c.inName + "." + goName + "()",
 			py:    c.inName + pySuffix,
+			rb:    c.inName + rbSuffix,
 		}, nil
 	}
 }
 
-// sliceIndex turns one NumPy index token into a go-ndarray Index, its Go
-// spelling and its NumPy spelling. n is the length of the axis it indexes;
-// it is needed only for "a::s" and ":b:s", which go-ndarray spells with both
-// bounds (Rng), so the Go code names the bound NumPy leaves implicit.
-func sliceIndex(tok string, n int) (ndarray.Index, string, error) {
+// sliceIndex turns one NumPy index token into a go-ndarray Index and its Go
+// and Ruby spellings. n is the length of the axis it indexes; it is needed
+// only for "a::s" and ":b:s", which go-ndarray spells with both bounds (Rng),
+// so the Go code names the bound NumPy leaves implicit.
+//
+// Ruby spells a slice as a Range, an Enumerator::ArithmeticSequence for a
+// step (the go-embedded-ruby NDArray contract): "1:3" is (1...3), "1:" is
+// (1..), ":3" is (...3), "::2" is (0..) % 2, ":" is true. An endless range
+// with a negative step runs past the first element, as NumPy's does.
+func sliceIndex(tok string, n int) (ndarray.Index, string, string, error) {
+	itoa := strconv.Itoa
 	if !strings.Contains(tok, ":") {
 		i, err := parseInt(tok)
 		if err != nil {
-			return ndarray.Index{}, "", fmt.Errorf("index %q: want an integer or a start:stop:step slice", tok)
+			return ndarray.Index{}, "", "", fmt.Errorf("index %q: want an integer or a start:stop:step slice", tok)
 		}
-		return ndarray.A(i), "ndarray.A(" + strconv.Itoa(i) + ")", nil
+		return ndarray.A(i), "ndarray.A(" + itoa(i) + ")", itoa(i), nil
 	}
 	parts := strings.Split(tok, ":")
 	if len(parts) > 3 {
-		return ndarray.Index{}, "", fmt.Errorf("index %q: too many colons", tok)
+		return ndarray.Index{}, "", "", fmt.Errorf("index %q: too many colons", tok)
 	}
 	var vals [3]int
 	var has [3]bool
@@ -383,7 +403,7 @@ func sliceIndex(tok string, n int) (ndarray.Index, string, error) {
 		}
 		v, err := parseInt(p)
 		if err != nil {
-			return ndarray.Index{}, "", fmt.Errorf("index %q: %v", tok, err)
+			return ndarray.Index{}, "", "", fmt.Errorf("index %q: %v", tok, err)
 		}
 		vals[i], has[i] = v, true
 	}
@@ -391,21 +411,36 @@ func sliceIndex(tok string, n int) (ndarray.Index, string, error) {
 	if has[2] {
 		step = vals[2]
 	}
-	itoa := strconv.Itoa
 	switch {
 	case !has[0] && !has[1] && step == 1:
-		return ndarray.All(), "ndarray.All()", nil
+		return ndarray.All(), "ndarray.All()", "true", nil
 	case !has[0] && !has[1]:
-		return ndarray.Step(step), "ndarray.Step(" + itoa(step) + ")", nil
+		from := "0"
+		if step < 0 {
+			from = "-1"
+		}
+		return ndarray.Step(step), "ndarray.Step(" + itoa(step) + ")", "(" + from + "..) % " + itoa(step), nil
 	case has[0] && has[1] && step == 1:
-		return ndarray.R(start, stop), "ndarray.R(" + itoa(start) + ", " + itoa(stop) + ")", nil
+		return ndarray.R(start, stop), "ndarray.R(" + itoa(start) + ", " + itoa(stop) + ")", "(" + itoa(start) + "..." + itoa(stop) + ")", nil
 	case has[0] && !has[1] && step == 1:
-		return ndarray.From(start), "ndarray.From(" + itoa(start) + ")", nil
+		return ndarray.From(start), "ndarray.From(" + itoa(start) + ")", "(" + itoa(start) + "..)", nil
 	case !has[0] && has[1] && step == 1:
-		return ndarray.To(stop), "ndarray.To(" + itoa(stop) + ")", nil
+		return ndarray.To(stop), "ndarray.To(" + itoa(stop) + ")", "(..." + itoa(stop) + ")", nil
 	}
-	// A stepped range with a bound left out: name it. NumPy's implicit
-	// bound runs to the end the step walks towards.
+	// A stepped range with a bound left out. Ruby leaves the stop out as
+	// NumPy does (an endless range); a beginless range cannot be stepped, so
+	// it names the first element the step walks from: 0, or -1 backwards.
+	rb := "(" + itoa(start) + "..." + itoa(stop) + ") % " + itoa(step)
+	switch {
+	case !has[1]:
+		rb = "(" + itoa(start) + "..) % " + itoa(step)
+	case !has[0] && step < 0:
+		rb = "(-1..." + itoa(stop) + ") % " + itoa(step)
+	case !has[0]:
+		rb = "(0..." + itoa(stop) + ") % " + itoa(step)
+	}
+	// go-ndarray's Rng names both bounds: NumPy's implicit one runs to the
+	// end the step walks towards.
 	if !has[0] {
 		start = 0
 		if step < 0 {
@@ -419,7 +454,7 @@ func sliceIndex(tok string, n int) (ndarray.Index, string, error) {
 		}
 	}
 	return ndarray.Rng(start, stop, step),
-		"ndarray.Rng(" + itoa(start) + ", " + itoa(stop) + ", " + itoa(step) + ")", nil
+		"ndarray.Rng(" + itoa(start) + ", " + itoa(stop) + ", " + itoa(step) + ")", rb, nil
 }
 
 func buildSlice(c call) (plan, error) {
@@ -429,22 +464,32 @@ func buildSlice(c call) (plan, error) {
 	shape := c.in.Shape()
 	idx := make([]ndarray.Index, len(c.args))
 	goIdx := make([]string, len(c.args))
+	rbIdx := make([]string, len(c.args))
+	// An integer on every axis selects one element: go-ndarray returns a 0-d
+	// view, Ruby a Float, which NDArray.full turns back into a 0-d array.
+	scalar := len(c.args) == len(shape)
 	for i, tok := range c.args {
 		n := 0
 		if i < len(shape) {
 			n = shape[i]
 		}
-		ix, g, err := sliceIndex(tok, n)
+		ix, g, r, err := sliceIndex(tok, n)
 		if err != nil {
 			return plan{}, err
 		}
-		idx[i], goIdx[i] = ix, g
+		idx[i], goIdx[i], rbIdx[i] = ix, g, r
+		scalar = scalar && !strings.Contains(tok, ":")
 	}
 	in := c.in
+	rb := c.inName + "[" + strings.Join(rbIdx, ", ") + "]"
+	if scalar {
+		rb = "NDArray.full(" + rb + ")"
+	}
 	return plan{
 		run:   func() (*ndarray.Array, error) { return in.Slice(idx...) },
 		goRHS: c.inName + ".Slice(" + strings.Join(goIdx, ", ") + ")", goErr: true,
 		py: c.inName + "[" + strings.Join(c.args, ", ") + "]",
+		rb: rb,
 	}, nil
 }
 
@@ -464,6 +509,7 @@ func buildSqueeze(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return in.Squeeze(axes...) },
 		goRHS: c.inName + ".Squeeze(" + joinInts(axes) + ")", goErr: true,
 		py: py,
+		rb: c.inName + ".squeeze" + rbParens(joinInts(axes)),
 	}, nil
 }
 
@@ -480,6 +526,7 @@ func buildExpandDims(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return in.ExpandDims(v[0]) },
 		goRHS: c.inName + ".ExpandDims(" + strconv.Itoa(v[0]) + ")", goErr: true,
 		py: "np.expand_dims(" + c.inName + ", " + strconv.Itoa(v[0]) + ")",
+		rb: c.inName + ".expand_dims(" + strconv.Itoa(v[0]) + ")",
 	}, nil
 }
 
@@ -499,6 +546,7 @@ func buildUfunc(goName, pyName string) func(c call) (plan, error) {
 			run:   func() (*ndarray.Array, error) { return f(), nil },
 			goRHS: c.inName + "." + goName + "()",
 			py:    "np." + pyName + "(" + c.inName + ")",
+			rb:    c.inName + "." + pyName,
 		}, nil
 	}
 }
@@ -516,6 +564,7 @@ func buildPower(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return in.Power(p), nil },
 		goRHS: c.inName + ".Power(" + formatFloat(p) + ")",
 		py:    c.inName + " ** " + formatFloat(p),
+		rb:    c.inName + " ** " + rbFloat(p),
 	}, nil
 }
 
@@ -537,6 +586,7 @@ func buildClip(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return in.Clip(lo, hi) },
 		goRHS: c.inName + ".Clip(" + args + ")", goErr: true,
 		py: "np.clip(" + c.inName + ", " + args + ")",
+		rb: c.inName + ".clip(" + rbArgs(lo, hi) + ")",
 	}, nil
 }
 
@@ -571,7 +621,7 @@ func buildReduce(goName, pyName string) func(c call) (plan, error) {
 		}
 		in, name := c.in, c.inName
 		if !hasAxis {
-			p := plan{scalar: true, goErr: true, py: name + "." + pyName + "()"}
+			p := plan{scalar: true, goErr: true, py: name + "." + pyName + "()", rb: name + "." + pyName}
 			p.goRHS = name + "." + goName + "()"
 			switch goName {
 			case "Sum":
@@ -596,13 +646,16 @@ func buildReduce(goName, pyName string) func(c call) (plan, error) {
 			"Min": in.MinAxis, "ArgMax": in.ArgMaxAxis,
 		}[goName]
 		py := name + "." + pyName + "(axis=" + strconv.Itoa(axis)
+		rb := name + "." + pyName + "(" + strconv.Itoa(axis)
 		if keep {
 			py += ", keepdims=True"
+			rb += ", keepdims: true"
 		}
 		return plan{
 			run:   func() (*ndarray.Array, error) { return f(axis, keep) },
 			goRHS: name + "." + goName + "Axis(" + strconv.Itoa(axis) + ", " + strconv.FormatBool(keep) + ")", goErr: true,
 			py: py + ")",
+			rb: rb + ")",
 		}, nil
 	}
 }
@@ -619,12 +672,14 @@ func buildCumSum(c call) (plan, error) {
 			run:   func() (*ndarray.Array, error) { return in.CumSumFlat(), nil },
 			goRHS: name + ".CumSumFlat()",
 			py:    "np.cumsum(" + name + ")",
+			rb:    name + ".cumsum",
 		}, nil
 	case 1:
 		return plan{
 			run:   func() (*ndarray.Array, error) { return in.CumSum(v[0]) },
 			goRHS: name + ".CumSum(" + strconv.Itoa(v[0]) + ")", goErr: true,
 			py: "np.cumsum(" + name + ", axis=" + strconv.Itoa(v[0]) + ")",
+			rb: name + ".cumsum(" + strconv.Itoa(v[0]) + ")",
 		}, nil
 	}
 	return plan{}, errors.New("CumSum takes at most one axis")
@@ -684,6 +739,7 @@ func buildArith(goName, pyOp string) func(c call) (plan, error) {
 				run:   func() (*ndarray.Array, error) { return f(v), nil },
 				goRHS: name + "." + goName + "Scalar(" + formatFloat(v) + ")",
 				py:    name + " " + pyOp + " " + formatFloat(v),
+				rb:    name + " " + pyOp + " " + rbFloat(v),
 			}, nil
 		}
 		b, bName, err := operand(goName, c)
@@ -700,11 +756,12 @@ func buildArith(goName, pyOp string) func(c call) (plan, error) {
 			run:   func() (*ndarray.Array, error) { return f(b) },
 			goRHS: name + "." + goName + "(" + bName + ")", goErr: true,
 			py: name + " " + pyOp + " " + bName,
+			rb: name + " " + pyOp + " " + bName,
 		}, nil
 	}
 }
 
-func buildArrayBinary(goName, pyFmt string) func(c call) (plan, error) {
+func buildArrayBinary(goName, pyFmt, rbFmt string) func(c call) (plan, error) {
 	return func(c call) (plan, error) {
 		b, bName, err := operand(goName, c)
 		if err != nil {
@@ -734,6 +791,7 @@ func buildArrayBinary(goName, pyFmt string) func(c call) (plan, error) {
 			run:   func() (*ndarray.Array, error) { return f(b) },
 			goRHS: name + "." + goName + "(" + bName + ")", goErr: true,
 			py: fmt.Sprintf(pyFmt, name, bName),
+			rb: fmt.Sprintf(rbFmt, name, bName),
 		}, nil
 	}
 }
@@ -751,6 +809,7 @@ func buildOuter(c call) (plan, error) {
 		run:   func() (*ndarray.Array, error) { return in.Outer(b), nil },
 		goRHS: name + ".Outer(" + bName + ")",
 		py:    "np.outer(" + name + ", " + bName + ")",
+		rb:    "NDArray.outer(" + name + ", " + bName + ")",
 	}, nil
 }
 
@@ -792,6 +851,7 @@ func buildJoin(goName, pyName string) func(c call) (plan, error) {
 			run:   func() (*ndarray.Array, error) { return f(arrays, axis) },
 			goRHS: "ndarray." + goName + "([]*ndarray.Array{" + list + "}, " + strconv.Itoa(axis) + ")", goErr: true,
 			py: "np." + pyName + "([" + list + "], axis=" + strconv.Itoa(axis) + ")",
+			rb: "NDArray." + pyName + "([" + list + "], axis: " + strconv.Itoa(axis) + ")",
 		}, nil
 	}
 }

@@ -28,7 +28,8 @@ import (
 // proved nothing.
 //
 // Environment: CHROME (the browser), PLAYGROUND_NODE_PATH (a node_modules with
-// puppeteer-core), HUGO (the hugo command, default "hugo").
+// puppeteer-core), HUGO (the hugo command, default "hugo"), PLAYGROUND_RUBY_WASM
+// (a prebuilt go-embedded-ruby wasm to test instead of the pinned one).
 func TestBrowserProof(t *testing.T) {
 	need := func(what string, ok bool) {
 		if ok {
@@ -79,6 +80,23 @@ func TestBrowserProof(t *testing.T) {
 	}
 	run(".", []string{"GOOS=js", "GOARCH=wasm"}, "go", "build", "-trimpath", "-o",
 		filepath.Join(static, "playground.wasm"), "./cmd/playground-wasm")
+	// The Ruby tab's interpreter, built as the deploy builds it: go-embedded-ruby
+	// at the version rubywasm/go.mod pins, by this same toolchain, so the one
+	// wasm_exec.js serves both modules. PLAYGROUND_RUBY_WASM names a prebuilt
+	// one instead (a go-embedded-ruby branch under test).
+	rbgo := filepath.Join(static, "rbgo.wasm")
+	if pre := os.Getenv("PLAYGROUND_RUBY_WASM"); pre != "" {
+		b, err := os.ReadFile(pre)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(rbgo, b, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		run("rubywasm", []string{"GOOS=js", "GOARCH=wasm"}, "go", "build", "-trimpath", "-ldflags=-s -w", "-o",
+			rbgo, "github.com/go-embedded-ruby/ruby/cmd/wasm")
+	}
 	execJS, err := os.ReadFile(filepath.Join(runtime.GOROOT(), "lib", "wasm", "wasm_exec.js"))
 	if err != nil {
 		t.Fatal(err)

@@ -32,7 +32,7 @@ const VIRIDIS_ENDS = [[0x44, 0x01, 0x54], [0xfd, 0xe7, 0x25]];
 const DESKTOP = { width: 1400, height: 900 };
 const PHONE = { width: 390, height: 844, isMobile: true, hasTouch: true, name: "phone" };
 
-async function run(scheme, dpr, vp = DESKTOP) {
+async function run(scheme, dpr, vp = DESKTOP, opts = {}) {
   const browser = await puppeteer.launch({
     executablePath: chrome, headless: true,
     args: ["--no-sandbox", "--disable-gpu", "--blink-settings=preferredColorScheme=" + (scheme === "dark" ? 0 : 1)],
@@ -42,6 +42,10 @@ async function run(scheme, dpr, vp = DESKTOP) {
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+    // Every request for the Ruby module: it must be fetched only once the Ruby
+    // tab is opened, and only once.
+    const rubyRequests = [];
+    page.on("request", (r) => { if (/\/rbgo\.wasm(\?|$)/.test(r.url())) rubyRequests.push(r.url()); });
     await page.setViewport({ width: vp.width, height: vp.height, deviceScaleFactor: dpr, isMobile: !!vp.isMobile, hasTouch: !!vp.hasTouch });
     await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }]);
     await page.evaluateOnNewDocument(() => { try { localStorage.removeItem("theme"); } catch (e) {} });
@@ -51,7 +55,7 @@ async function run(scheme, dpr, vp = DESKTOP) {
     const tag = scheme + "@" + dpr + "x" + (vp.name ? " " + vp.name : "") + ": ";
     const shot = (what) => path.join(captureDir, what + "-" + scheme + "-" + dpr + "x" + (vp.name ? "-" + vp.name : "") + ".png");
 
-    const debug = async () => JSON.parse(await page.evaluate(() => ndarrayDebug()));
+    const debug = async () => { const raw = await page.evaluate(() => ndarrayDebug()); try { return JSON.parse(raw); } catch (e) { throw new Error("ndarrayDebug returned no JSON (" + e.message + "): " + String(raw).slice(0, 200)); } };
     const boxOf = async () => page.evaluate(() => { const r = document.getElementById("nd-canvas").getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
     let canvasBox = await boxOf();
     // On a phone the canvas is taller than the window and the stage scrolls
@@ -190,7 +194,7 @@ async function run(scheme, dpr, vp = DESKTOP) {
     check(tag + "the Go program is shown", d.code.startsWith("package main") && d.code.includes("ndarray.Arange(0, 6, 1)"), d.code.slice(0, 40));
     const lang = (await rects()).lang;
     await reveal(lang);
-    await clickAt(canvasBox.x + lang.x + lang.w * 0.75, canvasBox.y + lang.y + lang.h / 2);
+    await clickAt(canvasBox.x + lang.x + lang.w * 5 / 6, canvasBox.y + lang.y + lang.h / 2); // Go | Ruby | NumPy
     d = await debug();
     check(tag + "the NumPy tab shows NumPy", d.code.startsWith("import numpy as np") && d.code.includes("b.T"), d.code.slice(0, 40));
 
@@ -236,6 +240,61 @@ async function run(scheme, dpr, vp = DESKTOP) {
     px = await pixels({ x: 2, y: 2, w: 1, h: 1 });
     check(tag + "toggle to Dark paints the dark background", near(px, 0, BG.dark, 2) && (await debug()).dark === true, px.slice(0, 3));
 
+    // 10. Ruby, run in this browser by go-embedded-ruby (a second Go wasm
+    //     runtime in the page). Everything above used the Go and NumPy tabs:
+    //     the Ruby module must not have been fetched yet.
+    check(tag + "the Ruby module was not downloaded before the Ruby tab was opened", rubyRequests.length === 0, rubyRequests.join(", "));
+    if (opts.ruby) {
+      await pick("presets", "The README example");
+      d = await debug();
+      check(tag + "the README example is back, g selected", d.steps.length === 7 && d.selected === 6, d.steps.length + " / " + d.selected);
+      const goShape = d.resultShape, goValues = d.resultValues;
+      const lg = (await rects()).lang;
+      await reveal(lg);
+      await clickAt(canvasBox.x + lg.x + lg.w / 2, canvasBox.y + lg.y + lg.h / 2);
+      d = await debug();
+      check(tag + "the middle tab is Ruby, showing the Ruby program", d.lang === 1 && d.code.startsWith("# go-embedded-ruby") && d.code.includes("g = b + c\n"), d.lang + " " + d.code.slice(0, 40));
+      check(tag + "the Ruby program ends by printing the selected step", d.code.endsWith("puts g.shape.inspect\nputs g.to_a.inspect\n"), d.code.slice(-60));
+      check(tag + "opening the Ruby tab starts the download", rubyRequests.length === 1, rubyRequests.length);
+      await page.waitForFunction(() => JSON.parse(ndarrayDebug()).canRunRuby, { timeout: 300000, polling: 250 });
+      d = await debug();
+      check(tag + "the download finished, with its progress shown", d.rubyProgress === 1 && /press Run/.test(d.rubyStatus), d.rubyProgress + " " + d.rubyStatus);
+      await page.screenshot({ path: shot("ruby-ready") });
+      await click("run");
+      await page.waitForFunction(() => JSON.parse(ndarrayDebug()).rubyOutput !== "", { timeout: 120000, polling: 250 });
+      d = await debug();
+      check(tag + "the Ruby program ran without an error", /^Ran in your browser/.test(d.rubyStatus), d.rubyStatus + " / " + d.rubyOutput.slice(-200));
+      const lines = d.rubyOutput.trim().split("\n");
+      let rbShape, rbValues;
+      try { rbShape = JSON.parse(lines[lines.length - 2]); rbValues = JSON.parse(lines[lines.length - 1]); } catch (e) { rbShape = rbValues = String(e); }
+      check(tag + "Ruby's g.shape equals go-ndarray's", JSON.stringify(rbShape) === JSON.stringify(goShape), JSON.stringify(rbShape) + " vs " + JSON.stringify(goShape));
+      check(tag + "Ruby's g.to_a equals go-ndarray's values", Array.isArray(rbValues) && rbValues.length === goValues.length && rbValues.every((x, i) => x === goValues[i]), JSON.stringify(rbValues) + " vs " + JSON.stringify(goValues));
+      const ro = (await rects()).rubyOut;
+      check(tag + "the output panel fits inside the canvas (refitted for the Ruby tab)", ro.h > 40 && ro.y + ro.h <= canvasBox.h - 20, JSON.stringify(ro) + " in " + canvasBox.h);
+      const op = await pixels((await rects()).rubyOut);
+      check(tag + "the output is on screen (non-background pixels)", op.length / 4 - count(op, BG[scheme], 6) > 200, op.length / 4 - count(op, BG[scheme], 6));
+      await page.screenshot({ path: shot("ruby-ran") });
+      await click("copy");
+      const rbClip = await page.evaluate(() => navigator.clipboard.readText());
+      check(tag + "Copy copies the Ruby program", rbClip === d.code && rbClip.startsWith("# go-embedded-ruby"), rbClip.slice(0, 40));
+      // Both Go runtimes live on: the playground still answers clicks, and a
+      // second run reuses the module already there.
+      const st2 = (await rects()).steps;
+      await reveal(st2);
+      for (let y = st2.y + 4; y < st2.y + st2.h; y += 4) {
+        await clickAt(canvasBox.x + st2.x + 40, canvasBox.y + y);
+        d = await debug();
+        if (d.selected === 1) break;
+      }
+      check(tag + "after Ruby ran, clicking step b still selects it", d.selected === 1 && d.code.endsWith("puts b.shape.inspect\nputs b.to_a.inspect\n"), d.selected);
+      await click("run");
+      await page.waitForFunction(() => JSON.parse(ndarrayDebug()).rubyOutput !== "", { timeout: 120000, polling: 250 });
+      d = await debug();
+      const l2 = d.rubyOutput.trim().split("\n");
+      check(tag + "a second run prints b's shape", l2[l2.length - 2] === "[2, 3]", l2.slice(-2).join(" | "));
+      check(tag + "the Ruby module was fetched once", rubyRequests.length === 1, rubyRequests.length);
+    }
+
     check(tag + "no page or console error", errors.length === 0, errors.join(" | "));
   } finally {
     await browser.close();
@@ -244,11 +303,11 @@ async function run(scheme, dpr, vp = DESKTOP) {
 
 (async () => {
   try {
-    await run("light", 1);
+    await run("light", 1, DESKTOP, { ruby: true });
     await run("dark", 1);
     await run("light", 2);
     await run("dark", 2);
-    await run("light", 3, PHONE);
+    await run("light", 3, PHONE, { ruby: true });
     console.log("RESULT " + JSON.stringify({ ok: true, results }));
   } catch (e) {
     console.log("RESULT " + JSON.stringify({ ok: false, error: String(e.message || e), results }));

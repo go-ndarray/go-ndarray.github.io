@@ -32,7 +32,7 @@ func (s *State) HandleClick(x, y int) bool {
 
 // hit finds the leaf widget under (x, y), for the pointer capture.
 func (s *State) hit(x, y int) toolkit.Widget {
-	for _, w := range []toolkit.Widget{s.steps, s.table, s.code} {
+	for _, w := range []toolkit.Widget{s.steps, s.table, s.code, s.rbOut} {
 		if w.Bounds().Contains(x, y) {
 			return w
 		}

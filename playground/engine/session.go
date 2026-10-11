@@ -3,7 +3,7 @@
 
 // Package engine is the model of the go-ndarray playground: a pipeline of
 // steps, each one go-ndarray operation applied to earlier results, with the
-// Go and NumPy spellings of every step and what each result looks like in
+// Go, Ruby and NumPy spellings of every step and what each result looks like in
 // memory. Everything here is computed by go-ndarray itself; the package has
 // no user interface and no JavaScript.
 package engine
@@ -31,6 +31,7 @@ type Step struct {
 	Go    string // the Go statement
 	GoErr bool   // the Go call returns an error too
 	Py    string // the NumPy statement
+	Rb    string // the Ruby statement (go-embedded-ruby)
 
 	Elapsed time.Duration // mean wall time of one call
 	Runs    int           // how many calls the mean is over
@@ -124,6 +125,7 @@ func (s *Session) Apply(opName, input, args string) (Step, error) {
 		st.Go = st.Name + " := " + p.goRHS
 	}
 	st.Py = st.Name + " = " + p.py
+	st.Rb = st.Name + " = " + p.rb
 	for _, prev := range s.Steps {
 		if !prev.Scalar && SharesMemory(st.Layout, prev.Layout) {
 			st.Shares = append(st.Shares, prev.Name)
@@ -203,5 +205,35 @@ func (s *Session) PyProgram() string {
 	for _, st := range s.Steps {
 		fmt.Fprintf(&b, "print(%q, %s)\n", st.Name+" =", st.Name)
 	}
+	return b.String()
+}
+
+// RbProgram is the same pipeline in Ruby, for go-embedded-ruby, whose NDArray
+// is go-ndarray bound into the interpreter. It prints every step, then the
+// shape and the flat, row-major values of step sel (the last step when sel is
+// out of range), so a run can be checked against the Go result.
+func (s *Session) RbProgram(sel int) string {
+	if len(s.Steps) == 0 {
+		return "# Create an array to start."
+	}
+	if sel < 0 || sel >= len(s.Steps) {
+		sel = len(s.Steps) - 1
+	}
+	var b strings.Builder
+	b.WriteString("# go-embedded-ruby: NDArray is go-ndarray, bound into Ruby.\n\n")
+	for _, st := range s.Steps {
+		b.WriteString(st.Rb + "\n")
+	}
+	b.WriteString("\n")
+	for _, st := range s.Steps {
+		fmt.Fprintf(&b, "puts \"%s = #{%s.inspect}\"\n", st.Name, st.Name)
+	}
+	st := s.Steps[sel]
+	if st.Scalar {
+		fmt.Fprintf(&b, "\n# The selected step, %s, is a number.\nputs %s.inspect\n", st.Name, st.Name)
+		return b.String()
+	}
+	fmt.Fprintf(&b, "\n# The selected step, %s: its shape, then its values in row-major order.\n", st.Name)
+	fmt.Fprintf(&b, "puts %s.shape.inspect\nputs %s.to_a.inspect\n", st.Name, st.Name)
 	return b.String()
 }
