@@ -19,9 +19,10 @@ import (
 	"github.com/go-widgets/mvvm"
 )
 
-// Code languages of the code panel.
+// Code languages of the code panel, in tab order: Go | Ruby | NumPy.
 const (
 	LangGo = iota
+	LangRuby
 	LangNumPy
 )
 
@@ -51,6 +52,7 @@ type ViewModel struct {
 	Memory *mvvm.Observable[string]
 	Timing *mvvm.Observable[string]
 	GoLine *mvvm.Observable[string]
+	RbLine *mvvm.Observable[string]
 	PyLine *mvvm.Observable[string]
 	Grid   *mvvm.Observable[*engine.Grid] // nil when there is no step
 	Note   *mvvm.Observable[string]
@@ -58,6 +60,11 @@ type ViewModel struct {
 	// --- code panel ----------------------------------------------------------
 	CodeLang *mvvm.Observable[int]
 	Code     *mvvm.Observable[string]
+
+	// --- Ruby: the program run in this browser by go-embedded-ruby ---------
+	RubyOutput   *mvvm.Observable[string]  // what the last run printed, and its error
+	RubyStatus   *mvvm.Observable[string]  // where Ruby is: not loaded, downloading, ready, ran
+	RubyProgress *mvvm.Observable[float64] // the download, 0 to 1
 
 	// --- messages ------------------------------------------------------------
 	Error  *mvvm.Observable[string]
@@ -69,38 +76,54 @@ type ViewModel struct {
 	Reset      *mvvm.Command
 	LoadPreset *mvvm.Command
 	CopyCode   *mvvm.Command
+	RunRuby    *mvvm.Command
 
 	// Clipboard receives the text CopyCode copies; the host installs it.
 	Clipboard func(string)
 	// Runtime describes where the code runs, for the status line; the
 	// host fills it in. It defaults to the Go runtime's own view.
 	Runtime string
+
+	// RubyLoad downloads and starts the Ruby interpreter, reporting progress
+	// in bytes (total 0 when unknown), then calls done with "" or an error.
+	// It is asynchronous and called at most once. RubyEval runs a program on
+	// the started interpreter and returns what it printed and its error ("" on
+	// success). The host installs both; without them there is no Ruby.
+	RubyLoad func(progress func(got, total int64), done func(err string))
+	RubyEval func(src string) (output, err string)
+
+	ruby    rubyState
+	runNext bool // Run was pressed while the interpreter was loading
 }
 
 // New builds the ViewModel on the first preset.
 func New() *ViewModel {
 	v := &ViewModel{
-		OpIndex:     mvvm.NewObservable(0),
-		Inputs:      mvvm.NewObservableList[string](),
-		InputIndex:  mvvm.NewObservable(0),
-		Args:        mvvm.NewObservable(""),
-		Hint:        mvvm.NewObservable(""),
-		PresetIndex: mvvm.NewObservable(0),
-		Steps:       mvvm.NewObservableList[string](),
-		Selected:    mvvm.NewObservable(-1),
-		Title:       mvvm.NewObservable(""),
-		Shape:       mvvm.NewObservable(""),
-		Memory:      mvvm.NewObservable(""),
-		Timing:      mvvm.NewObservable(""),
-		GoLine:      mvvm.NewObservable(""),
-		PyLine:      mvvm.NewObservable(""),
-		Grid:        mvvm.NewObservableEq[*engine.Grid](nil, nil),
-		Note:        mvvm.NewObservable(""),
-		CodeLang:    mvvm.NewObservable(LangGo),
-		Code:        mvvm.NewObservable(""),
-		Error:       mvvm.NewObservable(""),
-		Status:      mvvm.NewObservable(""),
-		Runtime:     runtime.GOOS + "/" + runtime.GOARCH + ", GOMAXPROCS " + strconv.Itoa(runtime.GOMAXPROCS(0)),
+		OpIndex:      mvvm.NewObservable(0),
+		Inputs:       mvvm.NewObservableList[string](),
+		InputIndex:   mvvm.NewObservable(0),
+		Args:         mvvm.NewObservable(""),
+		Hint:         mvvm.NewObservable(""),
+		PresetIndex:  mvvm.NewObservable(0),
+		Steps:        mvvm.NewObservableList[string](),
+		Selected:     mvvm.NewObservable(-1),
+		Title:        mvvm.NewObservable(""),
+		Shape:        mvvm.NewObservable(""),
+		Memory:       mvvm.NewObservable(""),
+		Timing:       mvvm.NewObservable(""),
+		GoLine:       mvvm.NewObservable(""),
+		PyLine:       mvvm.NewObservable(""),
+		RbLine:       mvvm.NewObservable(""),
+		Grid:         mvvm.NewObservableEq[*engine.Grid](nil, nil),
+		Note:         mvvm.NewObservable(""),
+		CodeLang:     mvvm.NewObservable(LangGo),
+		Code:         mvvm.NewObservable(""),
+		RubyOutput:   mvvm.NewObservable(""),
+		RubyStatus:   mvvm.NewObservable(rubyIdle),
+		RubyProgress: mvvm.NewObservable(0.0),
+		Error:        mvvm.NewObservable(""),
+		Status:       mvvm.NewObservable(""),
+		Runtime:      runtime.GOOS + "/" + runtime.GOARCH + ", GOMAXPROCS " + strconv.Itoa(runtime.GOMAXPROCS(0)),
 	}
 	for _, op := range engine.Ops {
 		v.OpNames = append(v.OpNames, op.Name)
@@ -116,12 +139,21 @@ func New() *ViewModel {
 	v.CopyCode = mvvm.NewCommand(v.copyCode, func() bool { return len(v.session.Steps) > 0 })
 	mvvm.BindCanExecute(v.RemoveLast, v.Steps)
 	mvvm.BindCanExecute(v.Reset, v.Steps)
+	v.RunRuby = mvvm.NewCommand(v.runRuby, v.canRunRuby)
 	mvvm.BindCanExecute(v.CopyCode, v.Steps)
+	mvvm.BindCanExecute(v.RunRuby, v.Steps)
+	mvvm.BindCanExecute(v.RunRuby, v.CodeLang)
+	mvvm.BindCanExecute(v.RunRuby, v.RubyStatus)
 
 	v.OpIndex.SubscribeChanged(v.opChanged)
 	v.Selected.SubscribeChanged(v.showSelected)
 	v.Selected.SubscribeChanged(v.followSelection)
 	v.CodeLang.SubscribeChanged(v.showCode)
+	v.CodeLang.SubscribeChanged(v.rubyTabOpened)
+	// The Ruby program prints the selected step, so it follows the selection.
+	v.Selected.SubscribeChanged(v.showCode)
+	// An output belongs to the program that printed it.
+	v.Code.SubscribeChanged(func() { v.RubyOutput.Set("") })
 	// Picking a preset loads it: the menu is the action.
 	v.PresetIndex.SubscribeChanged(v.LoadPreset.Execute)
 
@@ -285,6 +317,7 @@ func (v *ViewModel) showSelected() {
 		v.Timing.Set("")
 		v.GoLine.Set("")
 		v.PyLine.Set("")
+		v.RbLine.Set("")
 		v.Grid.Set(nil)
 		v.Note.Set("")
 		return
@@ -295,6 +328,7 @@ func (v *ViewModel) showSelected() {
 	v.Memory.Set(memoryLine(st))
 	v.Timing.Set(timingLine(st))
 	v.GoLine.Set("Go     " + st.Go)
+	v.RbLine.Set("Ruby   " + st.Rb)
 	v.PyLine.Set("NumPy  " + st.Py)
 	g := engine.GridOf(st.Result)
 	v.Grid.Set(&g)
@@ -365,22 +399,126 @@ func durationText(d time.Duration) string {
 
 // showCode publishes the whole pipeline in the chosen language.
 func (v *ViewModel) showCode() {
-	if v.CodeLang.Get() == LangNumPy {
+	switch v.CodeLang.Get() {
+	case LangNumPy:
 		v.Code.Set(v.session.PyProgram())
-		return
+	case LangRuby:
+		v.Code.Set(v.session.RbProgram(v.Selected.Get()))
+	default:
+		v.Code.Set(v.session.GoProgram())
 	}
-	v.Code.Set(v.session.GoProgram())
 }
+
+// langNames name the code languages, by their constant.
+var langNames = [...]string{LangGo: "Go", LangRuby: "Ruby", LangNumPy: "NumPy"}
 
 func (v *ViewModel) copyCode() {
 	if v.Clipboard != nil {
 		v.Clipboard(v.Code.Get())
 	}
-	lang := "Go"
-	if v.CodeLang.Get() == LangNumPy {
-		lang = "NumPy"
+	v.Status.Set(langNames[v.CodeLang.Get()] + " program copied to the clipboard")
+}
+
+// --- Ruby --------------------------------------------------------------------
+
+// rubyState is where the Ruby interpreter is. It is downloaded only when the
+// visitor opens the Ruby tab: it is several times the size of the playground.
+type rubyState int
+
+const (
+	rubyNone    rubyState = iota // not downloaded
+	rubyLoading                  // downloading and starting
+	rubyReady                    // started: Run runs at once
+	rubyFailed                   // the download or the start failed; Run retries
+)
+
+// Ruby status lines.
+const (
+	rubyIdle    = "Ruby runs in this browser: go-embedded-ruby compiled to WebAssembly, downloaded when you open this tab."
+	rubyNoHost  = "Ruby runs only in the browser page."
+	rubyReadyTx = "go-embedded-ruby is ready: press Run."
+)
+
+// rubyTabOpened starts the download the first time the Ruby tab is shown.
+func (v *ViewModel) rubyTabOpened() {
+	if v.CodeLang.Get() == LangRuby && v.ruby == rubyNone {
+		v.loadRuby()
 	}
-	v.Status.Set(lang + " program copied to the clipboard")
+}
+
+// loadRuby asks the host for the interpreter, unless it is coming already.
+func (v *ViewModel) loadRuby() {
+	if v.RubyLoad == nil {
+		v.RubyStatus.Set(rubyNoHost)
+		return
+	}
+	v.ruby = rubyLoading
+	v.RubyProgress.Set(0)
+	v.RubyStatus.Set("Downloading go-embedded-ruby compiled to WebAssembly…")
+	v.RubyLoad(v.rubyDownloaded, v.rubyLoaded)
+}
+
+// rubyDownloaded reports the download's progress.
+func (v *ViewModel) rubyDownloaded(got, total int64) {
+	s := "Downloading go-embedded-ruby compiled to WebAssembly: " + megabytes(got)
+	if total > 0 {
+		v.RubyProgress.Set(min(1, float64(got)/float64(total)))
+		s += " of " + megabytes(total)
+	}
+	v.RubyStatus.Set(s + " MB")
+}
+
+// megabytes writes a byte count in MB with one decimal.
+func megabytes(n int64) string {
+	return strconv.FormatFloat(float64(n)/1e6, 'f', 1, 64)
+}
+
+// rubyLoaded ends the download, and runs the program if Run was pressed
+// while it lasted.
+func (v *ViewModel) rubyLoaded(err string) {
+	run := v.runNext
+	v.runNext = false
+	if err != "" {
+		v.ruby = rubyFailed
+		v.RubyStatus.Set("go-embedded-ruby failed to load: " + err)
+		return
+	}
+	v.ruby = rubyReady
+	v.RubyProgress.Set(1)
+	v.RubyStatus.Set(rubyReadyTx)
+	if run {
+		v.runRuby()
+	}
+}
+
+// canRunRuby: the Ruby tab is shown, there is a program, a host to run it,
+// and no download under way.
+func (v *ViewModel) canRunRuby() bool {
+	return v.CodeLang.Get() == LangRuby && len(v.session.Steps) > 0 && v.RubyLoad != nil && v.ruby != rubyLoading
+}
+
+// runRuby runs the Ruby program in the browser, downloading the interpreter
+// first if it is not there yet.
+func (v *ViewModel) runRuby() {
+	if v.ruby != rubyReady {
+		v.runNext = true
+		v.loadRuby()
+		return
+	}
+	src := v.session.RbProgram(v.Selected.Get())
+	start := time.Now()
+	out, err := v.RubyEval(src)
+	took := time.Since(start)
+	if err != "" {
+		if out != "" && !strings.HasSuffix(out, "\n") {
+			out += "\n"
+		}
+		out += err + "\n"
+		v.RubyStatus.Set("The Ruby program raised an error (" + durationText(took) + ").")
+	} else {
+		v.RubyStatus.Set("Ran in your browser by go-embedded-ruby in " + durationText(took) + ".")
+	}
+	v.RubyOutput.Set(out)
 }
 
 func (v *ViewModel) status() {

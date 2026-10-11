@@ -12,8 +12,10 @@
 #                  and dark forced, 1x and 2x, plus a phone (390x844 at 3x,
 #                  mobile, touch): real clicks and keys, asserted on the app's
 #                  state AND on canvas pixels, and the canvas must fit the
-#                  viewport width. A missing browser is a
-#                  failure here, never a skip.
+#                  viewport width. The Ruby tab: go-embedded-ruby is fetched
+#                  only once the tab is opened (requests counted), and the
+#                  README example run in Ruby prints go-ndarray's shape and
+#                  values. A missing browser is a failure here, never a skip.
 name: playground
 
 on:
@@ -102,7 +104,9 @@ jobs:
       - uses: actions/setup-go@v7
         with:
           go-version: "1.27.2"
-          cache-dependency-path: playground/go.sum
+          cache-dependency-path: |
+            playground/go.sum
+            playground/rubywasm/go.sum
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -123,7 +127,9 @@ jobs:
           CHROME: ${{ steps.chrome.outputs.chrome-path }}
           PLAYGROUND_NODE_PATH: ${{ runner.temp }}/pptr/node_modules
           PLAYGROUND_CAPTURE_DIR: ${{ runner.temp }}/captures
-        run: go test -count=1 -v -run TestBrowserProof .
+        # The proof builds the Ruby wasm too (go-embedded-ruby, about 100 MB) and
+        # downloads it twice in Chrome: give it more than go test's 10 minutes.
+        run: go test -count=1 -timeout 30m -v -run TestBrowserProof .
       - name: keep the screenshots
         if: always()
         uses: actions/upload-artifact@v7

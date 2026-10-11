@@ -4,9 +4,11 @@
 package playground
 
 import (
+	"encoding/json"
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -301,7 +303,7 @@ func TestDebugAndRects(t *testing.T) {
 		t.Error("no input")
 	}
 	r := s.Rects()
-	if r["apply"].W == 0 || r["table"].H == 0 || len(r) != 15 {
+	if r["apply"].W == 0 || r["table"].H == 0 || len(r) != 18 {
 		t.Errorf("rects %v", r)
 	}
 }
@@ -343,5 +345,84 @@ func TestLookCapture(t *testing.T) {
 		s.Draw(buf)
 		name := map[bool]string{false: "light.png", true: "dark.png"}[dark]
 		savePNG(t, name, buf, testW, testH)
+	}
+}
+
+// The Ruby tab: Run beside Copy, the program beside its output (below it on
+// a phone), the download line and bar; the other tabs show the code alone.
+func TestRubyTabLayout(t *testing.T) {
+	s := newTestState(t, false)
+	v := s.VM
+	if r := s.Rects(); r["run"].W != 0 || r["rubyOut"].W != 0 {
+		t.Fatal("the Go tab has no Run button and no output")
+	}
+	var loads int
+	v.RubyLoad = func(p func(got, total int64), done func(string)) { loads++; p(50, 100); done("") }
+	v.RubyEval = func(string) (string, string) { return "[2, 3]\n", "" }
+	// Click the middle third of the tab bar: the Ruby tab.
+	lang := s.lang.Bounds()
+	s.HandleClick(lang.X+lang.W/2, lang.Y+lang.H/2)
+	d := s.Debug()
+	if d.Lang != 1 || loads != 1 || !d.CanRunRuby || d.RubyProgress != 1 || !strings.HasPrefix(d.Code, "# go-embedded-ruby") {
+		t.Fatalf("Ruby tab: %+v, %d loads", d, loads)
+	}
+	r := s.Rects()
+	code := s.code.Bounds()
+	if r["run"].W == 0 || r["rubyOut"].X <= code.X+code.W || r["rubyOut"].H == 0 || code.W >= s.right.Bounds().W {
+		t.Errorf("wide Ruby layout: run %v out %v code %v", r["run"], r["rubyOut"], code)
+	}
+	s.HandleClick(center(r["run"]))
+	if d := s.Debug(); d.RubyOutput != "[2, 3]\n" || !reflect.DeepEqual(d.ResultShape, []int{2, 3}) || !reflect.DeepEqual(d.ResultValues, []float64{10, 21, 32, 13, 24, 35}) {
+		t.Errorf("after Run: %q %v %v", d.RubyOutput, d.ResultShape, d.ResultValues)
+	}
+	// A drag in the output scrolls it like the code panel.
+	out := s.rbOut.Bounds()
+	s.HandleClick(out.X+4, out.Y+4)
+	if s.dragTarget != s.rbOut {
+		t.Error("a press on the output captures the drag")
+	}
+	s.HandleRelease(out.X+4, out.Y+4)
+	buf := make([]byte, testW*testH*4)
+	s.Draw(buf)
+
+	// Narrow: the output goes under the program.
+	s.Resize(600, 1400)
+	if o, c := s.rbOut.Bounds(), s.code.Bounds(); o.Y < c.Y+c.H || o.H <= 0 {
+		t.Errorf("narrow Ruby layout: out %v under code %v", o, c)
+	}
+	// Back to Go: the code alone again.
+	v.CodeLang.Set(0)
+	if s.code.Bounds().W != s.right.Bounds().W || s.lang.Bounds().W+toolkit.Scaled(gap+90) != s.right.Bounds().W {
+		t.Errorf("the Go tab shows the code alone and no Run button: code %v lang %v", s.code.Bounds(), s.lang.Bounds())
+	}
+	// Nothing selected: no result in the snapshot.
+	v.Selected.Set(-1)
+	if d := s.Debug(); d.ResultShape != nil || d.ResultValues != nil {
+		t.Errorf("no selection, result %v %v", d.ResultShape, d.ResultValues)
+	}
+}
+
+// A large result's values stay out of the snapshot; its shape does not.
+func TestDebugBoundsValues(t *testing.T) {
+	s := newTestState(t, false)
+	if _, err := s.VM.Session().Apply("Arange", "", "0, 5000, 1"); err != nil {
+		t.Fatal(err)
+	}
+	s.VM.Selected.Set(len(s.VM.Session().Steps) - 1)
+	if d := s.Debug(); !reflect.DeepEqual(d.ResultShape, []int{5000}) || d.ResultValues != nil {
+		t.Errorf("shape %v, %d values", d.ResultShape, len(d.ResultValues))
+	}
+}
+
+// A result holding an infinity still makes a snapshot that encodes.
+func TestDebugNonFinite(t *testing.T) {
+	s := newTestState(t, false)
+	if _, err := s.VM.Session().Apply("Full", "", "inf, 2"); err != nil {
+		t.Fatal(err)
+	}
+	s.VM.Selected.Set(len(s.VM.Session().Steps) - 1)
+	d := s.Debug()
+	if _, err := json.Marshal(d); err != nil || d.ResultValues != nil || len(d.ResultShape) != 1 {
+		t.Errorf("non-finite: %v, %v", err, d.ResultValues)
 	}
 }

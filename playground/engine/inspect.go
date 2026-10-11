@@ -174,3 +174,14 @@ func GridOf(a *ndarray.Array) Grid {
 func FormatValue(v float64) string {
 	return strconv.FormatFloat(v, 'g', 6, 64)
 }
+
+// Flat returns the values of a in row-major order, as Ruby's to_a and
+// NumPy's ravel list them.
+func Flat(a *ndarray.Array) []float64 {
+	f := a.Flatten()
+	out := make([]float64, f.Size())
+	for i := range out {
+		out[i] = f.At(i)
+	}
+	return out
+}
