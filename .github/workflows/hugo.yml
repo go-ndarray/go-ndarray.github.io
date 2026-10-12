@@ -85,7 +85,7 @@ jobs:
           GOWORK: "off"
           GOTOOLCHAIN: local
         run: |
-          GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" \
+          GOOS=js GOARCH=wasm go build -tags rbgo_core -trimpath -ldflags "-s -w" \
             -o ../../static/playground/rbgo.wasm github.com/go-embedded-ruby/ruby/cmd/wasm
           raw=$(stat -c %s ../../static/playground/rbgo.wasm); gz=$(gzip -9 -c ../../static/playground/rbgo.wasm | wc -c)
           echo "rbgo.wasm ($(go list -m -f '{{.Version}}' github.com/go-embedded-ruby/ruby)): $raw bytes, $gz gzipped" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -94,7 +94,7 @@ func TestBrowserProof(t *testing.T) {
 			t.Fatal(err)
 		}
 	} else {
-		run("rubywasm", []string{"GOOS=js", "GOARCH=wasm"}, "go", "build", "-trimpath", "-ldflags=-s -w", "-o",
+		run("rubywasm", []string{"GOOS=js", "GOARCH=wasm"}, "go", "build", "-tags", "rbgo_core", "-trimpath", "-ldflags=-s -w", "-o",
 			rbgo, "github.com/go-embedded-ruby/ruby/cmd/wasm")
 	}
 	execJS, err := os.ReadFile(filepath.Join(runtime.GOROOT(), "lib", "wasm", "wasm_exec.js"))
