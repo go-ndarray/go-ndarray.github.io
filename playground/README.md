@@ -87,15 +87,18 @@ calls only the methods of that API.
 
 The interpreter is a second Go program compiled to WebAssembly,
 `github.com/go-embedded-ruby/ruby/cmd/wasm`, at the version `rubywasm/go.mod`
-pins:
+pins, built with the `rbgo_core` tag: the Ruby language and its numeric stack
+(NDArray, FFT, Complex, Rational, Set, BigDecimal, Matrix, …) and none of the
+gem bindings, which the playground never calls:
 
 ```sh
 cd rubywasm
-GOOS=js GOARCH=wasm go build -trimpath -ldflags="-s -w" \
+GOOS=js GOARCH=wasm go build -tags rbgo_core -trimpath -ldflags="-s -w" \
   -o ../../static/playground/rbgo.wasm github.com/go-embedded-ruby/ruby/cmd/wasm
 ```
 
-It is far larger than the playground (about 100 MB, 21 MB gzipped), so the page
+The full build was about 100 MB (22 MB gzipped); the core one is about 23 MB
+(5.7 MB gzipped). It is still larger than the playground, so the page
 never loads it up front: the first time the visitor opens the Ruby tab, the
 ViewModel asks the host, the page's `ndarrayRubyLoad` fetches it with a
 progress line and bar counting the bytes, and starts it in its own Go runtime

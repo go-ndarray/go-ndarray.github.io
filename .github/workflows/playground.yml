@@ -127,7 +127,7 @@ jobs:
       - name: build go-embedded-ruby (js/wasm)
         working-directory: playground/rubywasm
         run: |
-          GOOS=js GOARCH=wasm go build -trimpath -ldflags "-s -w" -o "$RUNNER_TEMP/rbgo.wasm" github.com/go-embedded-ruby/ruby/cmd/wasm
+          GOOS=js GOARCH=wasm go build -tags rbgo_core -trimpath -ldflags "-s -w" -o "$RUNNER_TEMP/rbgo.wasm" github.com/go-embedded-ruby/ruby/cmd/wasm
           raw=$(stat -c %s "$RUNNER_TEMP/rbgo.wasm"); gz=$(gzip -9 -c "$RUNNER_TEMP/rbgo.wasm" | wc -c)
           echo "rbgo.wasm ($(go list -m -f '{{.Version}}' github.com/go-embedded-ruby/ruby)): $raw bytes, $gz gzipped" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: run the proof
@@ -137,7 +137,7 @@ jobs:
           PLAYGROUND_CAPTURE_DIR: ${{ runner.temp }}/captures
           PLAYGROUND_RUBY_WASM: ${{ runner.temp }}/rbgo.wasm
         # TestRubyAgreesWithGo runs every operation's Ruby program on the
-        # interpreter. The proof downloads its ~100 MB twice in Chrome: give the
+        # interpreter. The proof downloads its ~23 MB twice in Chrome: give the
         # run more than go test's 10 minutes.
         run: go test -count=1 -timeout 30m -v -run 'TestBrowserProof|TestRubyAgreesWithGo' . ./engine
       - name: keep the screenshots

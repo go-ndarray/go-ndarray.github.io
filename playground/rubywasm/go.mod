@@ -80,7 +80,7 @@ require (
 	github.com/go-crdt/collab v0.74.0 // indirect
 	github.com/go-crdt/crdt v0.55.0 // indirect
 	github.com/go-datetime/dates v0.1.0 // indirect
-	github.com/go-embedded-ruby/ruby v0.5.0 // indirect
+	github.com/go-embedded-ruby/ruby v0.6.0 // indirect
 	github.com/go-encryptions/unixcrypt v0.1.0 // indirect
 	github.com/go-facter/facter v0.0.0-20260830120958-454b72e642ab // indirect
 	github.com/go-fft/fft v0.23.0 // indirect
