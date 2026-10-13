@@ -112,7 +112,7 @@ jobs:
           node-version: "24"
       - uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: "0.167.0"
+          hugo-version: "0.168.0"
           extended: true
       - name: install headless Chrome
         id: chrome
