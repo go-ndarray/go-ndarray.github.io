@@ -33,30 +33,14 @@ jobs:
           hugo-version: "0.168.0"
           extended: true
       - run: hugo --minify --destination ./public
+      # The checker is the landing kit's own, `landingkit links`, at the
+      # version go.mod pins (Renovate bumps it with the partials). It replaces
+      # an inline curl loop, and probes github.com blob links on
+      # raw.githubusercontent.com: github.com answers a program's request for a
+      # blob page with 503 most of the time. Checked on this site before the
+      # switch: every link passes, and a planted dead repository link and a
+      # dead blob link both fail it (exit 1).
       - name: Check
-        run: |
-          set -uo pipefail
-          # The character class matters: an extractor that stops only at ) and "
-          # carries a closing > or < into the request.
-          urls=$(grep -rhoE 'https?://[^)">< [:space:]]+' public/ | sed 's/[.,]$//' | sort -u)
-          test -n "$urls" || { echo "::error::no links found; did the site build?"; exit 1; }
-          echo "checking $(printf '%s\n' "$urls" | wc -l) distinct URLs"
-          fail=0
-          while read -r u; do
-            # img.shields.io renders anything asked of it and proves nothing.
-            case "$u" in *img.shields.io*) continue ;; esac
-            # Three attempts: one is a flake detector rather than a link
-            # checker, and a lane that fails at random is a lane people learn
-            # to ignore.
-            code=000
-            for attempt in 1 2 3; do
-              code=$(curl -sS -o /dev/null -w '%{http_code}' -L --max-time 25 "$u" || echo 000)
-              case "$code" in 2*|3*) break ;; esac
-              sleep 3
-            done
-            case "$code" in
-              2*|3*) printf '  ok   %s  %s\n' "$code" "$u" ;;
-              *)     printf '  FAIL %s  %s\n' "$code" "$u"; fail=1 ;;
-            esac
-          done <<< "$urls"
-          test "$fail" -eq 0 || { echo "::error::at least one link or image does not resolve"; exit 1; }
+        env:
+          GOWORK: "off"
+        run: go run github.com/go-fleettools/landingkit/cmd/landingkit links public
