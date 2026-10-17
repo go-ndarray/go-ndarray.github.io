@@ -80,7 +80,7 @@ require (
 	github.com/go-crdt/collab v0.74.0 // indirect
 	github.com/go-crdt/crdt v0.55.0 // indirect
 	github.com/go-datetime/dates v0.1.0 // indirect
-	github.com/go-embedded-ruby/ruby v0.6.0 // indirect
+	github.com/go-embedded-ruby/ruby v0.6.1 // indirect
 	github.com/go-encryptions/unixcrypt v0.1.0 // indirect
 	github.com/go-facter/facter v0.0.0-20260830120958-454b72e642ab // indirect
 	github.com/go-fft/fft v0.23.0 // indirect
@@ -100,7 +100,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-mustache/mustache v0.1.0 // indirect
-	github.com/go-ndarray/ndarray v0.11.0 // indirect
+	github.com/go-ndarray/ndarray v0.12.0 // indirect
 	github.com/go-nokogiri/nokogiri v0.1.0 // indirect
 	github.com/go-opentype/fonts v0.10.0 // indirect
 	github.com/go-opentype/opentype v0.13.0 // indirect
