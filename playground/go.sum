@@ -22,8 +22,8 @@ github.com/go-images/jpeg2000 v0.13.3 h1:GSnkQWQ72ANwfi/xYWt3za9Nfss+C1iBbk4uubL
 github.com/go-images/jpeg2000 v0.13.3/go.mod h1:r07D0wUJxBPZcsLTkLFt3OkL3DubrH6DsmRjJRnZYlo=
 github.com/go-images/png v0.2.0 h1:RFPkHPuRYRvrDJol/Mmn9P1DSaLV8VPmEQ8BkZoCpL0=
 github.com/go-images/png v0.2.0/go.mod h1:g1qayDmWLClHo9R5KQ+RrcUNTBcaA4c1thaIfEoS3vg=
-github.com/go-ndarray/ndarray v0.24.0 h1:+/9lU6lufVIm8otsRnirX7b+cwISEJnM/naXfTjl11s=
-github.com/go-ndarray/ndarray v0.24.0/go.mod h1:bDbGWswQLmTMh6V3LwvKUbpfHzeG4sZDcvuGnA0GC+s=
+github.com/go-ndarray/ndarray v0.25.0 h1:9KM97+W4KEi7AyIwO4BGWjQ1xjNZB3gnIVh6Gif8pf4=
+github.com/go-ndarray/ndarray v0.25.0/go.mod h1:bDbGWswQLmTMh6V3LwvKUbpfHzeG4sZDcvuGnA0GC+s=
 github.com/go-opentype/fonts v0.12.0 h1:gjYYkbDZBK3JHpraakgGNnXdkGq8oADerhDYjC22ILQ=
 github.com/go-opentype/fonts v0.12.0/go.mod h1:Kiep7ojxxaR2ALFeB/akcFHQyl1gG5OLIobp8EzaZSA=
 github.com/go-opentype/opentype v0.15.0 h1:ioE3eCbNZavlk/w073J3uX5FKjqhgOHQw+wZZdJ+gE4=
