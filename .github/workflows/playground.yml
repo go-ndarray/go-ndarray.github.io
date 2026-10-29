@@ -47,7 +47,7 @@ jobs:
           cache-dependency-path: playground/go.sum
       - uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "26"
       - name: gofmt
         run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       - name: vet (native and js/wasm)
@@ -109,7 +109,7 @@ jobs:
             playground/rubywasm/go.sum
       - uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "26"
       - uses: peaceiris/actions-hugo@v3
         with:
           hugo-version: "0.169.0"
