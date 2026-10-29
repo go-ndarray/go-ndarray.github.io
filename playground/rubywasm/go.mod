@@ -80,7 +80,7 @@ require (
 	github.com/go-crdt/collab v0.74.0 // indirect
 	github.com/go-crdt/crdt v0.55.0 // indirect
 	github.com/go-datetime/dates v0.1.0 // indirect
-	github.com/go-embedded-ruby/ruby v0.6.1 // indirect
+	github.com/go-embedded-ruby/ruby v0.8.3 // indirect
 	github.com/go-encryptions/unixcrypt v0.1.0 // indirect
 	github.com/go-facter/facter v0.0.0-20260830120958-454b72e642ab // indirect
 	github.com/go-fft/fft v0.23.0 // indirect
@@ -102,6 +102,9 @@ require (
 	github.com/go-mustache/mustache v0.1.0 // indirect
 	github.com/go-ndarray/ndarray v0.12.0 // indirect
 	github.com/go-nokogiri/nokogiri v0.1.0 // indirect
+	github.com/go-numerics/integrate v0.2.0 // indirect
+	github.com/go-numerics/optimize v0.2.0 // indirect
+	github.com/go-numerics/special v0.1.0 // indirect
 	github.com/go-opentype/fonts v0.10.0 // indirect
 	github.com/go-opentype/opentype v0.13.0 // indirect
 	github.com/go-opentype/shape v0.5.0 // indirect
@@ -140,7 +143,7 @@ require (
 	github.com/go-ruby-capistrano/capistrano v0.0.0-20260927173236-3b90af3c6888 // indirect
 	github.com/go-ruby-capybara/capybara v0.0.0-20260910084630-0731c9ea8d6d // indirect
 	github.com/go-ruby-cgi/cgi v0.0.0-20260916091525-3d328d3ff447 // indirect
-	github.com/go-ruby-chronic/chronic v0.0.0-20260916091614-bd47d560b6f4 // indirect
+	github.com/go-ruby-chronic/chronic v0.1.0 // indirect
 	github.com/go-ruby-cmath/cmath v0.0.0-20260916091648-4963ab4145f7 // indirect
 	github.com/go-ruby-concurrent-ruby/concurrent-ruby v0.0.0-20260916091840-b820f7a57284 // indirect
 	github.com/go-ruby-confd/confd v0.0.0-20260825131031-1ac780d51c57 // indirect
@@ -294,6 +297,7 @@ require (
 	github.com/go-simd/crc32 v0.0.0-20260903220012-5f164e0e0487 // indirect
 	github.com/go-simd/hex v0.0.0-20260903220024-a8d22a843218 // indirect
 	github.com/go-sql-driver/mysql v1.10.1 // indirect
+	github.com/go-statistics/stats v0.1.0 // indirect
 	github.com/go-typeset/bidi v0.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/go-webauthn/webauthn v0.18.2 // indirect
