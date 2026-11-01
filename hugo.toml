@@ -89,7 +89,7 @@ disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
   what = "Package `fft` is `numpy.fft` on arrays: `FFT`, `RFFT`, `FFT2`, `FFTN` and the rest, with `n`/`s`, `axes` and `norm`, over go-fft."
 [[params.families]]
   name = "Random numbers"
-  what = "Package `random` is `numpy.random` with NumPy's numbers for the same seed: PCG64, MT19937, Philox, SFC64, 40 samplers, and the legacy `RandomState`."
+  what = "Package `random` is `numpy.random` with NumPy's numbers for the same seed: PCG64, MT19937, Philox, SFC64, 40 samplers, the legacy `RandomState`, and allocation-free scalar draws (`Float64`, `FillUniform`, `IntN`, `FillIntN`, `ShuffleInt64`) for solvers, NumPy's stream consumed call for call."
 [[params.families]]
   name = "Notebooks and storage"
   what = "`Repr` prints like NumPy, `Display` gives a notebook text and HTML, and `MarshalBinary` writes the same bytes on every architecture."
