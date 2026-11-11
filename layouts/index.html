@@ -7,6 +7,7 @@
 <meta name="description" content="{{ .Site.Params.description }}">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 {{ partial "styles.html" . }}
+{{ partial "btn-try-style.html" . }}
 </head>
 <body class="lm">
   <header class="nav"><div class="wrap">
@@ -19,11 +20,8 @@
   <div class="hero"><div class="wrap">
     <div>
       <h1 class="head">NumPy-style n-dimensional arrays in pure Go.<br><span class="accent">13 dtypes, multicore + SIMD.</span></h1>
-      <p class="sub"><b>go-ndarray</b> is the <code>numpy</code> equivalent for Go: an n-dimensional array in <b>13 dtypes</b> with creation routines, <b>strided views that share data</b>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, linear algebra (a panel-packed, cache-blocked GEMM, and <code>numpy.linalg</code>), <code>numpy.fft</code> and <code>numpy.random</code> — all in <b>pure Go, with cgo disabled</b>.</p>
-      <div class="cta">
-        <a class="btn btn-primary" href="https://go-ndarray.github.io/docs/">{{ partial "icons/book.html" . }}Read the documentation →</a>
-        <a class="btn btn-primary" href="/playground/">{{ partial "icons/play.html" . }}Try it in your browser</a>
-      </div>
+      <p class="sub"><b>go-ndarray</b> is the <code>numpy</code> equivalent for Go: an n-dimensional array in <b>13 dtypes</b> with creation routines, <b>strided views that share data</b>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, linear algebra (a panel-packed, cache-blocked GEMM, and <code>numpy.linalg</code>), <code>numpy.fft</code> and <code>numpy.random</code>{{ if not (partial "mantra-on.html" .) }} — all in <b>pure Go, with cgo disabled</b>{{ end }}.</p>
+      {{ partial "cta.html" . }}
       <div class="trust"><span><b>{{ len .Site.Params.families }}</b> API families, NumPy's names</span><span><b>6</b> SIMD targets</span><span><b>CGO=0</b> no BLAS shim</span></div>
     </div>
     {{/* Lines taken verbatim from the Example section of go-ndarray/ndarray's README at v0.2.2. */}}
@@ -134,6 +132,6 @@ m @ b     Array(shape=[2 2], data=[10 13 28 40])</span></pre>
     </div>
   </div></section>
 
-  <footer><div class="wrap"><span>go-ndarray · <a href="https://github.com/go-ndarray">go-ndarray on GitHub</a> · BSD-3-Clause</span><span>Pure Go · CGO_ENABLED=0 · no BLAS shim</span></div></footer>
+  <footer><div class="wrap"><span>go-ndarray · <a href="https://github.com/go-ndarray">go-ndarray on GitHub</a>{{ if not (partial "mantra-on.html" .) }} · BSD-3-Clause{{ end }}</span>{{ if not (partial "mantra-on.html" .) }}<span>Pure Go · CGO_ENABLED=0 · no BLAS shim</span>{{ end }}</div></footer>
 </body>
 </html>

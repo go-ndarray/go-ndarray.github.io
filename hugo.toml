@@ -24,6 +24,16 @@ disableKinds = ['taxonomy', 'term', 'rss', 'sitemap', '404']
 [params]
   description = "go-ndarray is a pure-Go (CGO=0) NumPy-style n-dimensional array library in 13 dtypes — slicing/views, broadcasting, ufuncs, reductions, numpy.linalg, numpy.fft and numpy.random (NumPy's numbers for the same seed), multicore + SIMD on amd64, arm64, ppc64le, loong64, riscv64 and s390x, with a Workspace arena for loops."
 
+# The hero's buttons: rendered by the kit's cta.html, in the kit's order.
+[[params.cta]]
+  kind  = "docs"
+  href  = "https://go-ndarray.github.io/docs/"
+  label = "Read the documentation →"
+[[params.cta]]
+  kind  = "try"
+  href  = "/playground/"
+  label = "Try it in your browser"
+
 [[params.repos]]
   name  = "ndarray"
   kind  = "library · v0.38.1"
