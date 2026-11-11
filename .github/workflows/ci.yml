@@ -25,6 +25,13 @@ jobs:
           hugo-version: "0.169.0"
           extended: true
       - run: hugo --minify
+      # The kit's own check on the built page: the hero's button row must be the
+      # kit's cta.html (docs primary, try red, in the kit's order), and nothing
+      # the mantra strip says may be repeated beside it.
+      - name: landingkit check
+        env:
+          GOWORK: "off"
+        run: go run github.com/go-fleettools/landingkit/cmd/landingkit check public
       # A page that builds and says nothing is a page nobody notices is empty.
       - name: every repository is on it
         run: |
