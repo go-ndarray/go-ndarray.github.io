@@ -104,11 +104,19 @@ m @ b     Array(shape=[2 2], data=[10 13 28 40])</span></pre>
   <section id="perf" style="padding-top:10px"><div class="wrap">
     <div class="stats">
       <div><div class="n">100%</div><div class="l">test coverage, differentially checked against numpy</div></div>
-      <div><div class="n">2.3–4.5×</div><div class="l">NumPy's speed on whole-array <code>Sum</code>/<code>Mean</code>/<code>Max</code> at 4&nbsp;Mi (NumPy 2.5.3, 16-core Zen 3)</div></div>
-      <div><div class="n">3.7–5.9×</div><div class="l">single-threaded OpenBLAS 0.3.34 on <code>MatMul</code> from 512² (Zen 3)</div></div>
+      <div><div class="n">54 / 256</div><div class="l">public operations faster than NumPy 2.5.4 on one Zen 3 core (<code>Sum</code> 0.70×, <code>fft.FFT</code> 0.54× NumPy's time)</div></div>
+      <div><div class="n">188 / 256</div><div class="l">slower on one core, every one an open defect, tracked by cause in <a href="https://github.com/go-ndarray/ndarray/issues/118"><u>#118</u></a></div></div>
       <div><div class="n">≤ 0.51</div><div class="l">ULP for <code>Exp</code>/<code>Log</code>, ports of Arm's optimized-routines</div></div>
     </div>
-    <p class="lead" style="max-width:none;margin-top:28px"><b>Measured, wins and losses.</b> Against NumPy 2.5.3 + OpenBLAS 0.3.34 on a 16-core AMD Zen 3: <b>faster</b> on whole-array <code>Sum</code>/<code>Mean</code>/<code>Max</code> at 4&nbsp;Mi (2.3–4.5×), <code>SumAxis(1)</code> (2.2×), <code>MaxAxis(1)</code> (1.7×), <code>Exp</code> from 256&nbsp;Ki elements (2.4–5.6×) and <code>MatMul</code> against single-threaded OpenBLAS (3.7–5.9× from 512²); <b>slower</b> against 16-thread OpenBLAS (<code>MatMul</code> 0.42× at 512² and 0.51× at 1024², though 1.44× faster at 256²; <code>Dot</code> 0.69× and mat·vec 0.52×, all measured in one run with NumPy) and on allocating elementwise forms outside a <code>Workspace</code>. On Apple silicon the packed GEMM reaches <b>tuned-BLAS parity at 1024²</b> and beats the pure-Go <code>gonum</code> <b>4–10×</b>. On the other targets, against its own scalar code on one core: on a RISC-V SpacemiT X60 the RVV kernels make <code>Sum</code> up to <b>5.8×</b> faster and cut <code>MatMul</code> time by 31–45%; on an IBM z17 the s390x kernels take <code>MatMul</code> 1024² from 340 to <b>70&nbsp;ms</b> and cut <code>Max</code> by 92–96%.</p>
+    <p class="lead" style="max-width:none;margin-top:28px"><b>Measured, wins and losses, one core against one core.</b> The whole public API was timed against NumPy 2.5.4 with one-thread OpenBLAS 0.3.34, on the same data and on one AMD Zen 3 core (v0.41.0). <b>Faster</b> on 54 of 256 operations, for example <code>SqrtInto</code> (0.51× NumPy's time), the complex <code>fft.FFT</code> (0.54×), <code>Sum</code> (0.70×) and <code>Exp</code> (0.89×). <b>Slower</b> on 188, chiefly from:
+<ul>
+<li>allocating the result (<code>Add</code> 3.1× NumPy's time, where <code>AddInto</code> ties);</li>
+<li>elementwise operations without a vector kernel yet (<code>Ceil</code> 20×, <code>Abs</code> 12×);</li>
+<li>copies where NumPy returns a view;</li>
+<li><code>linalg</code> at 64² (1.4–4×);</li>
+<li>the <code>random</code> draws built on <code>log</code>/<code>exp</code>.</li>
+</ul>
+The table is in the <a href="https://go-ndarray.github.io/docs/latest/performance/"><u>docs</u></a>, and every slower row is tracked in <a href="https://github.com/go-ndarray/ndarray/issues/118"><u>#118</u></a>. On Apple silicon the packed GEMM reaches <b>tuned-BLAS parity at 1024²</b> and beats the pure-Go <code>gonum</code> <b>4–10×</b>. On the other targets, against its own scalar code on one core: on a RISC-V SpacemiT X60 the RVV kernels make <code>Sum</code> up to <b>5.8×</b> faster and cut <code>MatMul</code> time by 31–45%; on an IBM z17 the s390x kernels take <code>MatMul</code> 1024² from 340 to <b>70&nbsp;ms</b> and cut <code>Max</code> by 92–96%.</p>
   </div></section>
 
   <section id="repos" style="padding-top:20px"><div class="wrap">
@@ -127,7 +135,7 @@ m @ b     Array(shape=[2 2], data=[10 13 28 40])</span></pre>
   <section id="eco" style="padding-top:6px"><div class="wrap">
     <div class="band">
       <h2>The cgo-free ndarray the Go and Ruby ecosystems lacked.</h2>
-      <p>No cgo, no BLAS shim. A portable pure-Go core, multicore, with SIMD kernels on amd64, arm64, ppc64le, loong64, riscv64 and s390x and a <code>Workspace</code> arena that takes the garbage collector out of loops. Faster than NumPy on whole-array and row reductions, on large <code>Exp</code> and on <code>MatMul</code> against single-threaded BLAS, slower against 16-thread BLAS — the numbers are on the <a href="https://go-ndarray.github.io/docs/latest/performance/"><u>performance page</u></a>.</p>
+      <p>No cgo, no BLAS shim. A portable pure-Go core, multicore, with SIMD kernels on amd64, arm64, ppc64le, loong64, riscv64 and s390x and a <code>Workspace</code> arena that takes the garbage collector out of loops. Measured against NumPy one core against one core: faster on <code>Sum</code>, <code>Exp</code>, <code>Sqrt</code> and the complex FFT, slower on 188 of 256 operations, which are being worked through. The numbers are on the <a href="https://go-ndarray.github.io/docs/latest/performance/"><u>performance page</u></a>.</p>
       <a class="btn btn-ghost" href="https://github.com/go-ndarray/ndarray">{{ partial "icons/github.html" . }}Read the source on GitHub →</a>
     </div>
   </div></section>
