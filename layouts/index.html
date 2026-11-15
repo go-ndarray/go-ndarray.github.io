@@ -104,11 +104,11 @@ m @ b     Array(shape=[2 2], data=[10 13 28 40])</span></pre>
   <section id="perf" style="padding-top:10px"><div class="wrap">
     <div class="stats">
       <div><div class="n">100%</div><div class="l">test coverage, differentially checked against numpy</div></div>
-      <div><div class="n">51 / 256</div><div class="l">public operations faster than NumPy 2.5.4 on one Zen 3 core (<code>Sum</code> 0.76×, <code>fft.FFT</code> 0.64×, <code>Ravel</code> 0.35× NumPy's time), 19 more tied</div></div>
-      <div><div class="n">186 / 256</div><div class="l">slower on one core, every one an open defect, tracked by cause in <a href="https://github.com/go-ndarray/ndarray/issues/118"><u>#118</u></a></div></div>
+      <div><div class="n">54 / 256</div><div class="l">public operations faster than NumPy 2.5.4 on one Zen 3 core (<code>Sum</code> 0.80×, <code>fft.FFT</code> 0.52×, <code>Ravel</code> 0.36× NumPy's time), 17 more tied</div></div>
+      <div><div class="n">185 / 256</div><div class="l">slower on one core, every one an open defect, tracked by cause in <a href="https://github.com/go-ndarray/ndarray/issues/118"><u>#118</u></a></div></div>
       <div><div class="n">≤ 0.51</div><div class="l">ULP for <code>Exp</code>/<code>Log</code>, ports of Arm's optimized-routines</div></div>
     </div>
-    <div class="lead" style="max-width:none;margin-top:28px"><b>Measured, wins and losses, one core against one core.</b> The whole public API was timed against NumPy 2.5.4 with one-thread OpenBLAS 0.3.34, on the same data and on one AMD Zen 3 core (the code of v0.44.0). <b>Faster</b> on 51 of 256 operations, for example <code>Ravel</code> (0.35× NumPy's time, a view since v0.44.0), <code>Real</code> (0.57×), <code>SqrtInto</code> (0.52×), the complex <code>fft.FFT</code> (0.64×) and <code>Sum</code> (0.76×); 19 more are ties, such as <code>Exp</code> (0.92×). <b>Slower</b> on 186, chiefly from:
+    <div class="lead" style="max-width:none;margin-top:28px"><b>Measured, wins and losses, one core against one core.</b> The whole public API was timed against NumPy 2.5.4 with one-thread OpenBLAS 0.3.34, on the same data and on one AMD Zen 3 core (v0.45.0). <b>Faster</b> on 54 of 256 operations, for example <code>Ravel</code> (0.36× NumPy's time, a view since v0.44.0), <code>Real</code> (0.58×), <code>SqrtInto</code> (0.50×), the complex <code>fft.FFT</code> (0.52×) and <code>Sum</code> (0.80×); 17 more are ties, such as <code>Exp</code> (0.98×). <b>Slower</b> on 185, chiefly from:
 <ul>
 <li>allocating the result (<code>Add</code> 3.1× NumPy's time, where <code>AddInto</code> ties);</li>
 <li>elementwise operations without a vector kernel yet (<code>Ceil</code> 20×, <code>Abs</code> 12×);</li>
@@ -135,7 +135,7 @@ The table is in the <a href="https://go-ndarray.github.io/docs/latest/performanc
   <section id="eco" style="padding-top:6px"><div class="wrap">
     <div class="band">
       <h2>The cgo-free ndarray the Go and Ruby ecosystems lacked.</h2>
-      <p>No cgo, no BLAS shim. A portable pure-Go core, multicore, with SIMD kernels on amd64, arm64, ppc64le, loong64, riscv64 and s390x and a <code>Workspace</code> arena that takes the garbage collector out of loops. Measured against NumPy one core against one core: faster on <code>Sum</code>, <code>Exp</code>, <code>SqrtInto</code> and the complex FFT, slower on 186 of 256 operations, which are being worked through. The numbers are on the <a href="https://go-ndarray.github.io/docs/latest/performance/"><u>performance page</u></a>.</p>
+      <p>No cgo, no BLAS shim. A portable pure-Go core, multicore, with SIMD kernels on amd64, arm64, ppc64le, loong64, riscv64 and s390x and a <code>Workspace</code> arena that takes the garbage collector out of loops. Measured against NumPy one core against one core: faster on <code>Sum</code>, <code>Exp</code>, <code>SqrtInto</code> and the complex FFT, slower on 185 of 256 operations, which are being worked through. The numbers are on the <a href="https://go-ndarray.github.io/docs/latest/performance/"><u>performance page</u></a>.</p>
       <a class="btn btn-ghost" href="https://github.com/go-ndarray/ndarray">{{ partial "icons/github.html" . }}Read the source on GitHub →</a>
     </div>
   </div></section>
