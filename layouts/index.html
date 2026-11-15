@@ -20,7 +20,7 @@
   <div class="hero"><div class="wrap">
     <div>
       <h1 class="head">NumPy-style n-dimensional arrays in pure Go.<br><span class="accent">13 dtypes, multicore + SIMD.</span></h1>
-      <p class="sub"><b>go-ndarray</b> is the <code>numpy</code> equivalent for Go: an n-dimensional array in <b>13 dtypes</b> with creation routines, <b>strided views that share data</b>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, linear algebra (a panel-packed, cache-blocked GEMM, and <code>numpy.linalg</code>), <code>numpy.fft</code> and <code>numpy.random</code>{{ if not (partial "mantra-on.html" .) }} — all in <b>pure Go, with cgo disabled</b>{{ end }}.</p>
+      <p class="sub"><b>go-ndarray</b> is the <code>numpy</code> equivalent for Go: an n-dimensional array in <b>13 dtypes</b> with creation routines, <b>strided views that share data</b>, broadcasting elementwise ops and ufuncs, reductions (incl. arg / cumulative / clip / where), manipulation, linear algebra (a panel-packed, cache-blocked GEMM from <a href="https://github.com/go-blas/blas">go-blas/blas</a>, and <code>numpy.linalg</code>), <code>numpy.fft</code> and <code>numpy.random</code>{{ if not (partial "mantra-on.html" .) }} — all in <b>pure Go, with cgo disabled</b>{{ end }}.</p>
       {{ partial "cta.html" . }}
       <div class="trust"><span><b>{{ len .Site.Params.families }}</b> API families, NumPy's names</span><span><b>6</b> SIMD targets</span><span><b>CGO=0</b> no BLAS shim</span></div>
     </div>
